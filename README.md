@@ -195,7 +195,7 @@ description: Run the linter and fix what it reports
 Run `ruff check .`, fix each issue, and run it again until it passes.
 ```
 
-- Built in: commit, debug, explain, init, review, run, security-review, simplify, test, web-build.
+- Built in: commit, debug, explain, init, review, run, security-review, simplify, skill-inspector, test, web-build. `skill-inspector` is adapted from [NVIDIA SkillSpector](https://github.com/NVIDIA/SkillSpector) (Apache-2.0): it scans a skill with `skillspector scan --no-llm` when that is installed, reads the source, and gives an APPROVE / CAUTION / REJECT verdict before you install it.
 - `skills/library`: 30 engineering skills (TDD, debugging, code review, planning, API design,
   security, CI/CD, performance, system design…). Third-party skills are MIT-licensed; see
   `skills/library/LICENSES`.

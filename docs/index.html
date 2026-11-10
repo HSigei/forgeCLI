@@ -294,6 +294,119 @@
   footer .wrap { display: flex; gap: 20px; flex-wrap: wrap; justify-content: space-between; }
   footer a { color: var(--muted); }
 
+
+  /* ══ per-size experiences ══ */
+  .menu-btn { display: none; width: 40px; height: 40px; border: 1px solid var(--line-2); border-radius: 10px; background: transparent; cursor: pointer; place-content: center; gap: 6px; padding: 0; }
+  .menu-btn span { display: block; width: 18px; height: 2px; background: var(--text); transition: transform .25s var(--ease); }
+  .top.open .menu-btn span:first-child { transform: translateY(4px) rotate(45deg); }
+  .top.open .menu-btn span:last-child { transform: translateY(-4px) rotate(-45deg); }
+  .mbar { display: none; }
+
+  /* big monitors: more room, bigger type */
+  @media (min-width: 1600px) {
+    :root { --wrap: 1360px; }
+    body { font-size: 18px; }
+    .hero { padding-top: 150px; }
+  }
+
+  /* tablets: scene as a wide band under the text */
+  @media (min-width: 601px) and (max-width: 960px) {
+    .scene { aspect-ratio: 16 / 9; }
+    .tiger-btn { width: 32%; }
+    .hero-text { max-width: 640px; }
+    .crew { grid-template-columns: 1fr 1fr; }
+    .mood-stage { aspect-ratio: 1; }
+  }
+
+  /* small screens: dropdown menu */
+  @media (max-width: 860px) {
+    .menu-btn { display: inline-grid; }
+    .nav-cta { margin-left: auto; }
+    .top nav { display: none; position: absolute; top: 62px; left: 0; right: 0; flex-direction: column; align-items: stretch; gap: 0; margin: 0; padding: 6px 20px 18px; background: var(--bg); border-bottom: 1px solid var(--line); }
+    .top.open nav { display: flex; }
+    .top nav a.hide-sm { display: block; padding: 13px 0; border-bottom: 1px solid var(--line); font-size: 17px; color: var(--text); }
+    .style-pick { padding-top: 14px; justify-content: space-between; }
+    .style-pick span { display: inline; }
+  }
+
+  /* phones: swipe rails, compact relay, sticky install bar */
+  @media (max-width: 600px) {
+    section { padding: 72px 0; }
+    .hero { padding: 88px 0 40px; }
+    .sec-head { margin-bottom: 28px; }
+    .feat-track, .shots { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 14px; margin: 0 -20px; padding: 0 20px 10px; scrollbar-width: none; }
+    .feat-track::-webkit-scrollbar, .shots::-webkit-scrollbar { display: none; }
+    .feat { flex: 0 0 82%; min-height: 230px; scroll-snap-align: center; }
+    .shots figure { flex: 0 0 88%; scroll-snap-align: center; }
+    #features .sec-head::after, #screens .sec-head::after { content: "swipe \2192"; display: block; margin-top: 10px; font: 12px var(--mono); color: var(--dim); }
+    .chain { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .hop { grid-template-columns: 12px 1fr; gap: 8px; padding: 10px 12px; font-size: 13px; }
+    .hop .name small { display: block; margin: 0; }
+    .hop .st { grid-column: 2; text-align: left; }
+    .hop[data-s] { transform: none; }
+    .term pre { min-height: 230px; font-size: 12px; padding: 14px; }
+    .facts { gap: 16px; }
+    .facts b { font-size: 32px; }
+    .lane { min-height: 240px; }
+    .walker { display: none; }
+    .install-head .pile { display: none; }
+    .mbar { display: flex; align-items: center; gap: 8px; position: fixed; left: 10px; right: 10px; bottom: 10px; z-index: 25; padding: 8px 8px 8px 14px; border: 1px solid var(--term-line); border-radius: 14px; background: #07060df2; backdrop-filter: blur(8px); box-shadow: 0 10px 30px #0008; transform: translateY(150%); transition: transform .35s var(--ease); }
+    .mbar.show { transform: none; }
+    .mbar code { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--cyan); font-size: 12.5px; }
+    .mbar .btn { padding: 8px 12px; font-size: 14px; }
+    footer { padding-bottom: 96px; }
+  }
+  @media (max-width: 380px) { .mbar .copy { display: none; } }
+
+  /* ══ per-style layouts ══ */
+  /* Editorial: centred, like a magazine cover; panoramic scene; ruled lists */
+  [data-theme="editorial"] .hero-text { text-align: center; margin: 0 auto; max-width: 900px; }
+  [data-theme="editorial"] .lede { margin-inline: auto; }
+  [data-theme="editorial"] .hero-actions { justify-content: center; }
+  [data-theme="editorial"] .sec-head { text-align: center; margin-inline: auto; }
+  [data-theme="editorial"] .feat { background: transparent; border: 0; border-top: 2px solid var(--text); border-radius: 0; padding-left: 0; padding-right: 0; }
+  [data-theme="editorial"] .feat .glyph { display: none; }
+  [data-theme="editorial"] .facts li { border-top: 1px solid var(--line-2); padding-top: 14px; }
+  @media (min-width: 961px) {
+    [data-theme="editorial"] .hero-grid { grid-template-columns: 1fr; gap: 44px; }
+    [data-theme="editorial"] .scene { aspect-ratio: 21 / 8; }
+    [data-theme="editorial"] .tiger-btn { width: 22%; left: 6%; }
+    [data-theme="editorial"] .bubble { left: 24%; }
+  }
+
+  /* Studio: a poster - giant headline across the page, scene beside the copy */
+  @media (min-width: 961px) {
+    [data-theme="studio"] .hero-grid { grid-template-columns: 1fr 1fr; column-gap: 48px; row-gap: 0; align-items: start; }
+    [data-theme="studio"] .hero-text { display: contents; }
+    [data-theme="studio"] .hero-text .eyebrow { grid-column: 1 / -1; grid-row: 1; }
+    [data-theme="studio"] .hero h1 { grid-column: 1 / -1; grid-row: 2; font-size: clamp(46px, 5.2vw, 100px); margin-bottom: 36px; }
+    [data-theme="studio"] .hero h1 .line { display: inline; }
+    [data-theme="studio"] .hero h1 .line + .line::before { content: " "; }
+    [data-theme="studio"] .lede { grid-column: 1; grid-row: 3; margin-top: 0; }
+    [data-theme="studio"] .hero-actions { grid-column: 1; grid-row: 4; }
+    [data-theme="studio"] .meta { grid-column: 1; grid-row: 5; }
+    [data-theme="studio"] .scene { grid-column: 2; grid-row: 3 / 7; }
+  }
+  [data-theme="studio"] .feat:hover { background: var(--accent); color: var(--accent-ink); }
+  [data-theme="studio"] .feat:hover p, [data-theme="studio"] .feat:hover .n, [data-theme="studio"] .feat:hover code { color: var(--accent-ink); }
+
+  /* Precision: quiet and exact - no decoration, hairlines */
+  [data-theme="precision"] .feat .glyph { display: none; }
+  [data-theme="precision"] .facts li { border-top: 1px solid var(--line-2); padding-top: 14px; }
+  [data-theme="precision"] .scene { box-shadow: 0 1px 0 var(--line), 0 20px 50px -30px #0005; }
+  [data-theme="precision"] .eyebrow { font-family: var(--mono); color: var(--accent); }
+
+  /* Warm: soft, round, friendly */
+  [data-theme="warm"] .btn, [data-theme="warm"] .cmd, [data-theme="warm"] .moods button { border-radius: 999px; }
+  [data-theme="warm"] .feat, [data-theme="warm"] .card, [data-theme="warm"] .hop { box-shadow: 0 14px 34px -18px #e0600a66; border-color: transparent; }
+  [data-theme="warm"] .eyebrow { display: inline-block; background: var(--panel-2); color: var(--accent); padding: 5px 12px; border-radius: 999px; }
+  [data-theme="warm"] .feat:hover { transform: translateY(-4px) rotate(-.6deg); }
+  [data-theme="warm"] .feat { transition: transform .3s var(--ease); }
+
+  /* Spatial: glass panels over the grid */
+  [data-theme="spatial"] .feat, [data-theme="spatial"] .card, [data-theme="spatial"] .hop, [data-theme="spatial"] details.docs { background: color-mix(in srgb, var(--panel) 62%, transparent); backdrop-filter: blur(12px); border-color: var(--line-2); }
+  [data-theme="spatial"] .feat:hover, [data-theme="spatial"] .card:hover { border-color: var(--accent); box-shadow: var(--glow); }
+
   @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
     *, *::before, *::after { animation: none !important; transition: none !important; }
@@ -307,7 +420,7 @@
 <header class="top">
   <div class="wrap">
     <a class="logo" href="#top" aria-label="Forge, back to top">FORGE</a>
-    <nav aria-label="Main">
+    <nav aria-label="Main" id="main-nav">
       <a class="hide-sm" href="#failover">Failover</a>
       <a class="hide-sm" href="#crew">Crew</a>
       <a class="hide-sm" href="#docs">Docs</a>
@@ -321,15 +434,16 @@
           <option value="spatial">Spatial</option>
         </select>
       </label>
-      <a class="btn btn-primary" href="#install">Install</a>
     </nav>
+    <a class="btn btn-primary nav-cta" href="#install">Install</a>
+    <button class="menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="main-nav" aria-label="Menu"><span></span><span></span></button>
   </div>
 </header>
 
 <main id="top">
   <div class="hero">
     <div class="wrap hero-grid">
-      <div>
+      <div class="hero-text">
         <div class="eyebrow">terminal coding agent · v<span class="ver">0.8.0</span></div>
         <h1 class="display"><span class="line"><span>The coding agent</span></span><span class="line"><span>that <em>never stops</em></span></span><span class="line"><span>at a rate limit.</span></span></h1>
         <p class="lede">Forge reads your project, edits files and runs commands. Behind it sit a dozen providers: when one says 429, the next one picks up mid-sentence.</p>
@@ -398,7 +512,7 @@
         <article class="feat"><span class="glyph" aria-hidden="true">✎</span><span class="n">01</span><h3>Reads, edits, runs</h3><p>Files, search, shell, background dev servers. Every change arrives with its diff.</p></article>
         <article class="feat"><span class="glyph" aria-hidden="true">?</span><span class="n">02</span><h3>Smart approvals</h3><p>Edits inside the folder just happen. <code>rm</code>, <code>git push</code>, global installs and anything outside wait for your yes.</p></article>
         <article class="feat"><span class="glyph" aria-hidden="true">0</span><span class="n">03</span><h3>Free to start</h3><p>kilo, llm7 and ovh answer without a key. Free Groq, NVIDIA or OpenRouter keys make it fast.</p></article>
-        <article class="feat"><span class="glyph" aria-hidden="true">#</span><span class="n">04</span><h3>Skills</h3><p>Ten built in, thirty in the library, and your Claude Code skills work unchanged. One Markdown file each.</p></article>
+        <article class="feat"><span class="glyph" aria-hidden="true">#</span><span class="n">04</span><h3>Skills</h3><p>Eleven built in, including <code>skill-inspector</code> from NVIDIA SkillSpector, which vets a skill before you install it. Claude Code skills work unchanged.</p></article>
         <article class="feat"><span class="glyph" aria-hidden="true">3</span><span class="n">05</span><h3>Team mode</h3><p><code>forge -t</code> puts several models on one task: they plan, build and review each other.</p></article>
         <article class="feat"><span class="glyph" aria-hidden="true">↺</span><span class="n">06</span><h3>Picks up later</h3><p><code>forge -c</code> continues here. <code>forge -r 20261110</code> continues from anywhere.</p></article>
       </div>
@@ -528,6 +642,12 @@
     <span><a class="gh" href="https://github.com/HSigei/forgeCLI">GitHub</a> · <a href="https://pypi.org/project/forgecommandline/">PyPI</a> · <a class="rel" href="https://github.com/HSigei/forgeCLI/releases/latest">Releases</a></span>
   </div>
 </footer>
+
+<div class="mbar" id="mbar" inert>
+  <code id="mb-cmd">pipx install forgecommandline</code>
+  <button class="copy" type="button" data-copy="mb-cmd">copy</button>
+  <a class="btn btn-primary" href="#install">Install</a>
+</div>
 
 <div class="sprite walker" id="walker" aria-hidden="true"></div>
 
@@ -758,6 +878,36 @@
       else done(false);
     });
   });
+
+  /* ── small-screen menu ── */
+  var topBar = $(".top"), menuBtn = $("#menu-btn");
+  function closeMenu() { topBar.classList.remove("open"); menuBtn.setAttribute("aria-expanded", "false"); }
+  menuBtn.addEventListener("click", function () {
+    var o = topBar.classList.toggle("open");
+    menuBtn.setAttribute("aria-expanded", o ? "true" : "false");
+  });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeMenu(); });
+  $$("#main-nav a").forEach(function (a) { a.addEventListener("click", closeMenu); });
+  sel.addEventListener("change", closeMenu);
+
+  /* ── touch screens get touch wording ── */
+  if (window.matchMedia("(hover: none)").matches) {
+    $(".scene-hint").textContent = "tap the tiger";
+    $(".lane-tip").textContent = "tap anywhere";
+  }
+
+  /* ── phone install bar: shown between the hero and the install section ── */
+  var mbar = $("#mbar"), heroEl = $(".hero"), instEl = $("#install");
+  if ("IntersectionObserver" in window) {
+    var seen = { hero: true, inst: false };
+    var io = new IntersectionObserver(function (es) {
+      es.forEach(function (e) { seen[e.target === heroEl ? "hero" : "inst"] = e.isIntersecting; });
+      var show = !seen.hero && !seen.inst;
+      mbar.classList.toggle("show", show);
+      if (show) mbar.removeAttribute("inert"); else mbar.setAttribute("inert", "");
+    });
+    io.observe(heroEl); io.observe(instEl);
+  }
 
   /* ── failover relay ── */
   var hops = $$("#chain .hop"), out = $("#term-out"), play = $("#play");

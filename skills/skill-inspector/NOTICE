@@ -1,0 +1,4 @@
+skill-inspector is adapted from the skill-inspector skill in NVIDIA SkillSpector
+https://github.com/NVIDIA/SkillSpector
+Copyright NVIDIA Corporation. Licensed under the Apache License, Version 2.0 (see LICENSE in this folder).
+Changes: rewritten for Forge (Windows-friendly paths, Forge approval rules, shorter report format).
