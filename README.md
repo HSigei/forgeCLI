@@ -3,8 +3,8 @@
 <img src="docs/media/banner.png" alt="Forge: a pixel-art tiger cub beside a neon FORGE sign over a night city" width="100%">
 
 **A coding agent for your terminal that never stops at a rate limit.**<br>
-Forge reads and edits your files and runs commands. Every request can go to any of a dozen
-providers and keys; when one is busy, the next one picks up the same conversation.
+Forge reads and edits your files and runs commands. Bring your own API keys from as many
+providers as you like; when one is busy, the next one picks up the same conversation.
 
 [![PyPI](https://img.shields.io/pypi/v/forgecommandline?color=7c4dff&label=pypi)](https://pypi.org/project/forgecommandline/)
 ![Python](https://img.shields.io/badge/python-3.10%2B-3776ab)
@@ -84,9 +84,10 @@ The first interactive launch opens `/setup`, which adds a provider key. You can 
 key straight into the chat (Forge recognises it, files it under the right provider and redacts
 it before anything is sent or saved) or use `/keys add`.
 
-No key at all? Forge still works: the keyless gateways **kilo**, **llm7** and **ovh** sit at the
-end of the failover chain. Free keys from Groq, NVIDIA, OpenRouter, Cerebras or Gemini make it
-faster and smarter.
+Forge doesn't come with keys of its own: it runs on yours. Free-tier keys from Groq, NVIDIA,
+OpenRouter, Cerebras or Gemini are enough to start, and every extra key or provider you add is
+one more place to fail over to. (A few public keyless gateways, kilo, llm7 and ovh, sit at the
+very end of the chain as a last resort; they are slow and rate limited, so don't rely on them.)
 
 ```text
 forge                         chat in the current folder
@@ -374,3 +375,5 @@ python tests/test_failover.py        # offline, against fake servers; ends with 
 GitHub Actions runs the suite on every push. A `v*` tag runs it again, publishes to PyPI with
 trusted publishing (no token stored) and attaches a standalone `forge.exe` to a GitHub Release.
 `packaging/` has the Scoop manifest and winget and Homebrew notes.
+
+<p align="center"><sub>Powered by HK Labs</sub></p>

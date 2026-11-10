@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Forge — terminal coding agent</title>
-<meta name="description" content="Forge is a coding agent for your terminal. It reads and edits files, runs commands, and fails over across a dozen AI providers so one rate limit never stops your work.">
+<meta name="description" content="Forge is a coding agent for your terminal. It reads and edits files, runs commands, and fails over across the API keys you bring - Groq, NVIDIA, OpenRouter, OpenAI, Gemini and more - so one rate limit never stops your work.">
 <meta property="og:title" content="Forge — the coding agent that never stops at a rate limit">
-<meta property="og:description" content="Reads and edits your files, runs commands, and hands the same conversation to the next provider when one is busy.">
+<meta property="og:description" content="Reads and edits your files, runs commands, and hands the same conversation to your next key or provider when one is busy.">
 <meta property="og:image" content="media/banner.png">
 <meta name="theme-color" content="#0a0912">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -293,6 +293,7 @@
   footer { border-top: 1px solid var(--line); padding: 30px 0 110px; color: var(--dim); font-size: 14px; }
   footer .wrap { display: flex; gap: 20px; flex-wrap: wrap; justify-content: space-between; }
   footer a { color: var(--muted); }
+  footer .powered { margin-left: 10px; padding-left: 10px; border-left: 1px solid var(--line-2); font: 12px var(--mono); letter-spacing: .04em; opacity: .75; }
 
 
   /* ══ per-size experiences ══ */
@@ -446,12 +447,12 @@
       <div class="hero-text">
         <div class="eyebrow">terminal coding agent · v<span class="ver">0.8.0</span></div>
         <h1 class="display"><span class="line"><span>The coding agent</span></span><span class="line"><span>that <em>never stops</em></span></span><span class="line"><span>at a rate limit.</span></span></h1>
-        <p class="lede">Forge reads your project, edits files and runs commands. Behind it sit a dozen providers: when one says 429, the next one picks up mid-sentence.</p>
+        <p class="lede">Forge reads your project, edits files and runs commands. Bring your own API keys from as many providers as you like: when one says 429, the next one picks up mid-sentence.</p>
         <div class="hero-actions">
           <div class="cmd"><span class="pr" aria-hidden="true">&gt;</span><code id="hero-cmd">pipx install forgecommandline</code><button class="copy" type="button" data-copy="hero-cmd">copy</button></div>
           <a class="btn btn-ghost" href="#install">Other ways</a>
         </div>
-        <div class="meta">Python 3.10+ · Windows, macOS, Linux · no key required</div>
+        <div class="meta">Python 3.10+ · Windows, macOS, Linux · bring your own keys</div>
       </div>
 
       <div class="scene" id="scene">
@@ -473,7 +474,7 @@
       <div class="sec-head">
         <div class="eyebrow">failover</div>
         <h2 id="fo-h" class="display">A relay, not <em>a single runner.</em></h2>
-        <p>Same conversation, next provider. You see one yellow line and keep working.</p>
+        <p>Same conversation, your next key. You see one yellow line and keep working.</p>
       </div>
       <div class="relay">
         <div>
@@ -481,7 +482,7 @@
             <li class="hop" data-s="idle"><span class="dot"></span><span class="name">groq <small>gpt-oss-120b</small></span><span class="st">waiting</span></li>
             <li class="hop" data-s="idle"><span class="dot"></span><span class="name">nvidia <small>minimax-m3.1-flash</small></span><span class="st">waiting</span></li>
             <li class="hop" data-s="idle"><span class="dot"></span><span class="name">openrouter <small>nemotron-3-ultra:free</small></span><span class="st">waiting</span></li>
-            <li class="hop" data-s="idle"><span class="dot"></span><span class="name">kilo · llm7 · ovh <small>keyless</small></span><span class="st">waiting</span></li>
+            <li class="hop" data-s="idle"><span class="dot"></span><span class="name">your next key <small>any provider you added</small></span><span class="st">waiting</span></li>
           </ol>
           <div class="relay-ctl">
             <button class="btn btn-ghost" type="button" id="play" aria-controls="term-out">▶ Run it</button>
@@ -511,7 +512,7 @@
       <div class="feat-track" id="feat-track">
         <article class="feat"><span class="glyph" aria-hidden="true">✎</span><span class="n">01</span><h3>Reads, edits, runs</h3><p>Files, search, shell, background dev servers. Every change arrives with its diff.</p></article>
         <article class="feat"><span class="glyph" aria-hidden="true">?</span><span class="n">02</span><h3>Smart approvals</h3><p>Edits inside the folder just happen. <code>rm</code>, <code>git push</code>, global installs and anything outside wait for your yes.</p></article>
-        <article class="feat"><span class="glyph" aria-hidden="true">0</span><span class="n">03</span><h3>Free to start</h3><p>kilo, llm7 and ovh answer without a key. Free Groq, NVIDIA or OpenRouter keys make it fast.</p></article>
+        <article class="feat"><span class="glyph" aria-hidden="true">0</span><span class="n">03</span><h3>Your keys, your plans</h3><p>Paste keys from Groq, NVIDIA, OpenRouter, OpenAI, Gemini and others, several per provider if you have them. Forge spreads the load across them. Your keys stay on your machine.</p></article>
         <article class="feat"><span class="glyph" aria-hidden="true">#</span><span class="n">04</span><h3>Skills</h3><p>Eleven built in, including <code>skill-inspector</code> from NVIDIA SkillSpector, which vets a skill before you install it. Claude Code skills work unchanged.</p></article>
         <article class="feat"><span class="glyph" aria-hidden="true">3</span><span class="n">05</span><h3>Team mode</h3><p><code>forge -t</code> puts several models on one task: they plan, build and review each other.</p></article>
         <article class="feat"><span class="glyph" aria-hidden="true">↺</span><span class="n">06</span><h3>Picks up later</h3><p><code>forge -c</code> continues here. <code>forge -r 20261110</code> continues from anywhere.</p></article>
@@ -611,7 +612,7 @@
           <li><div><p>Install, or run <code>forge.cmd</code> straight away on Windows.</p><div class="cmd"><code id="c9">python -m pip install .</code><button class="copy" type="button" data-copy="c9">copy</button></div></div></li>
         </ol>
       </div>
-      <p class="note"><b>First run</b> opens <code>/setup</code> for a key. Skip it if you like: the keyless gateways work immediately, and a key pasted into the chat later gets filed under the right provider and redacted.</p>
+      <p class="note"><b>First run</b> opens <code>/setup</code> to add your API keys. Add one or many: a key pasted into the chat later gets filed under the right provider and redacted. The more keys you add, the less you wait.</p>
     </div>
   </section>
 
@@ -638,7 +639,7 @@
 
 <footer>
   <div class="wrap">
-    <span>Forge is open source under the MIT licence.</span>
+    <span>Forge is open source under the MIT licence. <span class="powered">Powered by HK Labs</span></span>
     <span><a class="gh" href="https://github.com/HSigei/forgeCLI">GitHub</a> · <a href="https://pypi.org/project/forgecommandline/">PyPI</a> · <a class="rel" href="https://github.com/HSigei/forgeCLI/releases/latest">Releases</a></span>
   </div>
 </footer>
@@ -808,7 +809,7 @@
     "groq is resting. nvidia has it.",
     "429? I know a guy.",
     "edits in this folder: on me. git push: on you.",
-    "no key? kilo, llm7 and ovh still pick up.",
+    "two keys? twice the rate limit.",
     "saved. forge -c brings it back.",
     "I asked before deleting anything. You're welcome.",
     "the courier's on his way."
