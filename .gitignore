@@ -11,3 +11,7 @@ dist/
 .forge/
 node_modules/
 Screenshot*.png
+
+# private working notes (kept locally, never published)
+HANDOFF.md
+MENTOR.md

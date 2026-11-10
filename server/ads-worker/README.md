@@ -4,7 +4,11 @@ A Cloudflare Worker with a D1 database. It picks at most one sponsor line per in
 showings so you can bill, stops a sponsor when their paid showings run out, and signs each ad so Forge
 only shows lines that came from you. Free Cloudflare plan is enough.
 
-## One-time setup (about 10 minutes)
+## One-time setup
+
+Quickest: `npx wrangler login`, then from the forge-cli folder run `python server/ads-worker/setup.py`.
+It does every step below and fills in `forgecli/ads.py`; the admin token goes to
+`~/.forge/ads-admin-token.txt`. By hand (about 10 minutes):
 
 ```bash
 npm install -g wrangler
