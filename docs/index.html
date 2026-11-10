@@ -4,56 +4,473 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Forge — terminal coding agent</title>
-<meta name="description" content="Forge is a terminal coding agent that spreads work across your API keys and providers, so one rate limit never stops you.">
+<meta name="description" content="Forge is a coding agent for your terminal. It reads and edits files, runs commands, and fails over across a dozen AI providers so one rate limit never stops your work.">
+<meta property="og:title" content="Forge — the coding agent that never stops at a rate limit">
+<meta property="og:description" content="Reads and edits your files, runs commands, and hands the same conversation to the next provider when one is busy.">
+<meta property="og:image" content="media/banner.png">
+<meta name="theme-color" content="#0a0912">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Silkscreen&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
-  :root { --bg:#0a0912; --panel:#13111f; --text:#e9e6f5; --muted:#9a94b5; --pink:#ff4fd8; --cyan:#3ef0ff; --line:#2a2540; }
-  * { box-sizing:border-box; }
-  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.65 ui-sans-serif,system-ui,"Segoe UI",sans-serif; }
-  header { padding:72px 16px 40px; text-align:center; background:radial-gradient(60% 80% at 50% 0%,#2a0f3a 0%,var(--bg) 70%); }
-  h1.brand { margin:0; font:800 clamp(44px,9vw,84px)/1 ui-monospace,"Cascadia Code",Consolas,monospace; letter-spacing:.08em;
-             color:var(--pink); text-shadow:0 0 18px #ff4fd880,0 0 2px #fff; }
-  header p { max-width:640px; margin:18px auto 26px; color:var(--muted); font-size:18px; }
-  .install { display:inline-block; max-width:100%; overflow-x:auto; padding:12px 18px; border:1px solid var(--line); border-radius:10px;
-             background:var(--panel); font:15px ui-monospace,Consolas,monospace; color:var(--cyan); }
-  nav { display:flex; gap:20px; justify-content:center; margin-top:22px; flex-wrap:wrap; }
-  nav a, main a { color:var(--cyan); }
-  main { max-width:860px; margin:0 auto; padding:24px 16px 80px; }
-  main h1 { display:none; }
-  main h2 { margin-top:2.2em; padding-bottom:.3em; border-bottom:1px solid var(--line); color:var(--pink); }
-  main h3 { color:#ffd3f5; }
-  pre { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:14px; overflow-x:auto; }
-  code { font-family:ui-monospace,"Cascadia Code",Consolas,monospace; font-size:.92em; }
-  :not(pre) > code { background:#1d1930; padding:.1em .35em; border-radius:4px; }
-  table { border-collapse:collapse; width:100%; display:block; overflow-x:auto; }
-  th, td { border:1px solid var(--line); padding:6px 10px; text-align:left; }
-  img { max-width:100%; }
-  footer { text-align:center; color:var(--muted); padding:24px 16px 40px; font-size:14px; }
+  :root {
+    --bg: #0a0912;
+    --bg-2: #100d1c;
+    --panel: #14111f;
+    --panel-2: #1b1730;
+    --line: #2a2540;
+    --line-2: #3b3460;
+    --text: #ece9f7;
+    --muted: #a19bbd;
+    --dim: #6f6990;
+    --pink: #ff4fd8;
+    --cyan: #3ef0ff;
+    --amber: #ffc857;
+    --green: #5dffa0;
+    --red: #ff6b81;
+    --focus: #3ef0ff;
+    --mono: "JetBrains Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
+    --pixel: "Silkscreen", var(--mono);
+    --sans: "Space Grotesk", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+    --r: 10px;
+    --wrap: 1120px;
+    --ease: cubic-bezier(0.16, 1, 0.3, 1);
+    --t-ui: 200ms;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 17px/1.6 var(--sans); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+  img { max-width: 100%; height: auto; display: block; }
+  a { color: var(--cyan); text-underline-offset: 3px; }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; border-radius: 4px; }
+  code, kbd, pre { font-family: var(--mono); }
+  .wrap { max-width: var(--wrap); margin: 0 auto; padding: 0 20px; }
+  .skip { position: absolute; left: -999px; top: 8px; background: var(--pink); color: #000; padding: 8px 12px; z-index: 10; }
+  .skip:focus { left: 8px; }
+
+  /* ── nav ── */
+  .top { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+  .top .wrap { display: flex; align-items: center; gap: 24px; height: 60px; }
+  .logo { font: 400 20px var(--pixel); color: var(--pink); text-decoration: none; letter-spacing: .06em; text-shadow: 0 0 12px #ff4fd870; }
+  .top nav { display: flex; gap: 22px; margin-left: auto; align-items: center; }
+  .top nav a:not(.btn) { color: var(--muted); text-decoration: none; font-size: 15px; }
+  .top nav a:not(.btn):hover { color: var(--text); }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 8px; font: 600 15px var(--sans); text-decoration: none; cursor: pointer; border: 1px solid transparent; transition: transform var(--t-ui) var(--ease), background var(--t-ui), border-color var(--t-ui); }
+  .btn:active { transform: translateY(1px); }
+  .btn-primary { background: var(--pink); color: #14001a; }
+  .btn-primary:hover { background: #ff7be3; }
+  .btn-ghost { border-color: var(--line-2); color: var(--text); background: transparent; }
+  .btn-ghost:hover { border-color: var(--cyan); }
+  .top .btn { padding: 7px 12px; font-size: 14px; }
+  @media (max-width: 720px) { .top nav a.hide-sm { display: none; } }
+
+  /* ── hero ── */
+  .hero { position: relative; padding: 64px 0 40px; background: radial-gradient(70% 60% at 50% 0%, #2a0f3a 0%, transparent 70%); }
+  .eyebrow { font: 400 13px var(--pixel); color: var(--cyan); letter-spacing: .12em; text-transform: uppercase; }
+  .hero h1 { margin: 14px 0 0; font: 700 clamp(38px, 6.4vw, 72px)/1.04 var(--sans); letter-spacing: -0.02em; max-width: 15ch; }
+  .hero h1 em { font-style: normal; color: var(--pink); text-shadow: 0 0 24px #ff4fd860; }
+  .hero .lede { max-width: 58ch; color: var(--muted); font-size: 19px; margin: 18px 0 28px; }
+  .hero-grid { display: grid; grid-template-columns: 1.05fr 1fr; gap: 48px; align-items: center; }
+  .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .cmd { display: flex; align-items: center; gap: 12px; padding: 10px 10px 10px 16px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--panel); font: 15px var(--mono); color: var(--cyan); max-width: 100%; }
+  .cmd .pr { color: var(--dim); user-select: none; }
+  .cmd code { white-space: nowrap; overflow-x: auto; min-width: 0; }
+  .hero-grid > *, .relay > *, .steps > li > div { min-width: 0; }
+  .copy { flex: none; border: 1px solid var(--line-2); background: var(--panel-2); color: var(--muted); font: 600 12px var(--mono); padding: 6px 10px; border-radius: 6px; cursor: pointer; transition: color var(--t-ui), border-color var(--t-ui); }
+  .copy:hover { color: var(--text); border-color: var(--cyan); }
+  .copy[data-done] { color: var(--green); border-color: var(--green); }
+  @media (max-width: 480px) { .cmd { font-size: 13px; padding-left: 12px; } .hero .lede { font-size: 17px; } }
+  .meta { margin-top: 18px; color: var(--dim); font: 13px var(--mono); }
+  .banner { border-radius: 14px; border: 1px solid var(--line); box-shadow: 0 30px 80px -30px #ff4fd855, 0 0 0 1px #00000060; image-rendering: pixelated; width: 100%; }
+  @media (max-width: 900px) { .hero-grid { grid-template-columns: 1fr; gap: 32px; } .hero { padding-top: 40px; } }
+
+  /* ── sections ── */
+  section { padding: 72px 0; border-top: 1px solid var(--line); }
+  .sec-head { max-width: 62ch; margin-bottom: 36px; }
+  .sec-head h2 { margin: 10px 0 10px; font: 700 clamp(28px, 4vw, 42px)/1.1 var(--sans); letter-spacing: -0.015em; }
+  .sec-head p { margin: 0; color: var(--muted); }
+
+  /* ── failover replay (signature) ── */
+  .relay { display: grid; grid-template-columns: 1fr 1.1fr; gap: 28px; align-items: start; }
+  .chain { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .hop { display: grid; grid-template-columns: 22px 1fr auto; gap: 12px; align-items: center; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); font: 15px var(--mono); transition: border-color var(--t-ui), background var(--t-ui), opacity var(--t-ui); }
+  .hop .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--line-2); justify-self: center; }
+  .hop .name { color: var(--text); }
+  .hop .name small { color: var(--dim); font-size: 12px; margin-left: 6px; }
+  .hop .st { font-size: 12px; color: var(--dim); text-align: right; min-width: 9ch; }
+  .hop[data-s="try"] { border-color: var(--cyan); background: #0f1e28; }
+  .hop[data-s="try"] .dot { background: var(--cyan); box-shadow: 0 0 10px var(--cyan); animation: blink 0.7s steps(2) infinite; }
+  .hop[data-s="try"] .st { color: var(--cyan); }
+  .hop[data-s="fail"] { opacity: .7; }
+  .hop[data-s="fail"] .dot { background: var(--red); }
+  .hop[data-s="fail"] .st { color: var(--red); }
+  .hop[data-s="ok"] { border-color: var(--green); background: #0f2219; }
+  .hop[data-s="ok"] .dot { background: var(--green); box-shadow: 0 0 10px var(--green); }
+  .hop[data-s="ok"] .st { color: var(--green); }
+  @keyframes blink { 50% { opacity: .3; } }
+  .term { border: 1px solid var(--line-2); border-radius: 12px; background: #07060d; overflow: hidden; }
+  .term-bar { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line); background: var(--bg-2); font: 12px var(--mono); color: var(--dim); }
+  .term-bar i { width: 10px; height: 10px; border-radius: 50%; background: var(--line-2); }
+  .term-bar span { margin-left: 8px; }
+  .term pre { margin: 0; padding: 18px; min-height: 290px; font-size: 13.5px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; color: var(--text); }
+  .term .y { color: var(--amber); } .term .c { color: var(--cyan); } .term .p { color: var(--pink); } .term .g { color: var(--green); } .term .d { color: var(--dim); }
+  .relay-ctl { display: flex; gap: 12px; align-items: center; margin-top: 16px; flex-wrap: wrap; }
+  .relay-ctl p { margin: 0; color: var(--dim); font-size: 14px; }
+  .facts { margin: 22px 0 0; padding: 0; list-style: none; display: grid; gap: 10px; color: var(--muted); font-size: 15px; }
+  .facts li { padding-left: 18px; position: relative; }
+  .facts li::before { content: ""; position: absolute; left: 0; top: .7em; width: 6px; height: 6px; background: var(--pink); }
+  @media (max-width: 900px) { .relay { grid-template-columns: 1fr; } }
+
+  /* ── features ── */
+  .feats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+  .feat { background: var(--bg-2); padding: 26px 24px; }
+  .feat h3 { margin: 0 0 8px; font: 600 18px var(--sans); display: flex; gap: 10px; align-items: baseline; }
+  .feat h3 b { font: 400 11px var(--pixel); color: var(--pink); letter-spacing: .08em; }
+  .feat p { margin: 0; color: var(--muted); font-size: 15px; }
+  .feat code { color: var(--cyan); font-size: 13px; }
+  @media (max-width: 900px) { .feats { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 600px) { .feats { grid-template-columns: 1fr; } }
+
+  /* ── screens ── */
+  .shots { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+  figure { margin: 0; }
+  .shot { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: #07060d; }
+  figcaption { margin-top: 10px; color: var(--dim); font-size: 14px; }
+  .shots .wide { grid-column: 1 / -1; }
+  .courier { display: flex; gap: 20px; align-items: center; padding: 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+  .courier img { width: 120px; image-rendering: pixelated; flex: none; }
+  .courier p { margin: 0; color: var(--muted); font-size: 15px; }
+  @media (max-width: 760px) { .shots { grid-template-columns: 1fr; } }
+
+  /* ── install ── */
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+  .tab { appearance: none; border: 0; background: none; color: var(--muted); font: 600 15px var(--sans); padding: 12px 16px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+  .tab:hover { color: var(--text); }
+  .tab[aria-selected="true"] { color: var(--text); border-bottom-color: var(--pink); }
+  .panel { padding: 26px 0 0; }
+  .panel[hidden] { display: none; }
+  .steps { margin: 0; padding: 0; list-style: none; counter-reset: s; display: grid; gap: 18px; max-width: 760px; }
+  .steps > li { counter-increment: s; display: grid; grid-template-columns: 34px 1fr; gap: 14px; }
+  .steps > li::before { content: counter(s); font: 400 14px var(--pixel); color: var(--pink); border: 1px solid var(--line-2); border-radius: 8px; height: 34px; display: grid; place-items: center; }
+  .steps p { margin: 4px 0 10px; color: var(--muted); }
+  .steps p:first-child { color: var(--text); }
+  .note { margin-top: 24px; padding: 14px 16px; border-left: 2px solid var(--amber); background: #1b1608; color: var(--muted); font-size: 15px; max-width: 760px; border-radius: 0 8px 8px 0; }
+  .note b { color: var(--amber); }
+
+  /* ── docs ── */
+  details.docs { border: 1px solid var(--line); border-radius: 12px; background: var(--bg-2); }
+  details.docs > summary { cursor: pointer; padding: 18px 22px; font-weight: 600; list-style: none; display: flex; justify-content: space-between; align-items: center; }
+  details.docs > summary::-webkit-details-marker { display: none; }
+  details.docs > summary::after { content: "+"; font: 20px var(--mono); color: var(--pink); }
+  details.docs[open] > summary::after { content: "−"; }
+  #readme { padding: 0 22px 28px; max-width: 860px; font-size: 16px; }
+  #readme > div:first-child, #readme > hr:first-of-type { display: none; }
+  #readme h2 { margin-top: 2em; padding-bottom: .3em; border-bottom: 1px solid var(--line); color: var(--pink); }
+  #readme h3 { color: #ffd3f5; }
+  #readme pre { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px; overflow-x: auto; font-size: 13.5px; }
+  #readme :not(pre) > code { background: var(--panel-2); padding: .1em .35em; border-radius: 4px; font-size: .9em; }
+  #readme table { border-collapse: collapse; display: block; overflow-x: auto; }
+  #readme th, #readme td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
+  #readme img { border-radius: 8px; margin: 12px 0; }
+  #readme summary { cursor: pointer; margin: 10px 0; }
+  .state { color: var(--muted); }
+
+  footer { border-top: 1px solid var(--line); padding: 36px 0 48px; color: var(--dim); font-size: 14px; }
+  footer .wrap { display: flex; gap: 20px; flex-wrap: wrap; justify-content: space-between; }
+  footer a { color: var(--muted); }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
 </style>
 </head>
 <body>
-<header>
-  <h1 class="brand">FORGE</h1>
-  <p>A terminal coding agent that reads and edits your files, runs commands, and spreads requests across your API keys and providers, so one rate limit never stops your work.</p>
-  <div class="install">pipx install forgecommandline</div>
-  <nav><a href="#readme">Docs</a><a id="gh" href="https://github.com/">GitHub</a><a id="rel" href="https://github.com/">Windows download</a></nav>
+<a class="skip" href="#install">Skip to install</a>
+
+<header class="top">
+  <div class="wrap">
+    <a class="logo" href="#top" aria-label="Forge home">FORGE</a>
+    <nav aria-label="Main">
+      <a class="hide-sm" href="#failover">Failover</a>
+      <a class="hide-sm" href="#features">Features</a>
+      <a class="hide-sm" href="#docs">Docs</a>
+      <a class="gh hide-sm" href="https://github.com/HSigei/forgeCLI">GitHub</a>
+      <a class="btn btn-primary" href="#install">Install</a>
+    </nav>
+  </div>
 </header>
-<main id="readme"><p>Loading the guide…</p></main>
-<footer>Forge is open source under the MIT licence.</footer>
+
+<main id="top">
+  <div class="hero">
+    <div class="wrap hero-grid">
+      <div>
+        <div class="eyebrow">terminal coding agent · v<span class="ver">0.8.0</span></div>
+        <h1>The coding agent that <em>never stops</em> at a rate limit.</h1>
+        <p class="lede">Forge reads and edits your files and runs commands from your terminal. Every request can go to any of a dozen providers and keys. When one is busy, the next one picks up the same conversation.</p>
+        <div class="hero-actions">
+          <div class="cmd"><span class="pr" aria-hidden="true">&gt;</span><code id="hero-cmd">pipx install forgecommandline</code><button class="copy" type="button" data-copy="hero-cmd">copy</button></div>
+          <a class="btn btn-ghost" href="#install">Other ways to install</a>
+        </div>
+        <div class="meta">Python 3.10+ · Windows first, works on macOS and Linux · free without any key</div>
+      </div>
+      <img class="banner" src="media/banner.png" width="1280" height="384" alt="Forge's pixel-art start banner: a tiger cub beside a neon FORGE sign over a night city">
+    </div>
+  </div>
+
+  <section id="failover" aria-labelledby="fo-h">
+    <div class="wrap">
+      <div class="sec-head">
+        <div class="eyebrow">How it keeps going</div>
+        <h2 id="fo-h">A relay, not a single runner.</h2>
+        <p>Providers are tried in order, up to four keys each. A failure rests only that model on that key, and the next provider gets the same conversation. Press play to watch one request go through.</p>
+      </div>
+      <div class="relay">
+        <div>
+          <ol class="chain" id="chain">
+            <li class="hop" data-s="idle"><span class="dot"></span><span class="name">groq <small>gpt-oss-120b</small></span><span class="st">waiting</span></li>
+            <li class="hop" data-s="idle"><span class="dot"></span><span class="name">nvidia <small>minimax-m3.1-flash</small></span><span class="st">waiting</span></li>
+            <li class="hop" data-s="idle"><span class="dot"></span><span class="name">openrouter <small>nemotron-3-ultra:free</small></span><span class="st">waiting</span></li>
+            <li class="hop" data-s="idle"><span class="dot"></span><span class="name">kilo · llm7 · ovh <small>keyless</small></span><span class="st">waiting</span></li>
+          </ol>
+          <div class="relay-ctl">
+            <button class="btn btn-ghost" type="button" id="play" aria-controls="term-out">▶ Play the relay</button>
+            <p>An illustration of the failover rules, using real provider names.</p>
+          </div>
+        </div>
+        <div class="term" role="region" aria-label="Example Forge session">
+          <div class="term-bar"><i></i><i></i><i></i><span>forge — my-project</span></div>
+          <pre id="term-out" aria-live="polite"><span class="d">❯</span> fix the failing test in tests/test_api.py
+<span class="d">Press play to run the example.</span></pre>
+        </div>
+      </div>
+      <ul class="facts">
+        <li>Per-minute limits rest that model for 60 s; daily limits until UTC midnight. The key keeps serving its other models.</li>
+        <li>A provider silent for 30 s is skipped. Empty or junk replies count as failures; cut-off replies are continued.</li>
+        <li>If every model is resting, Forge waits for the first one back instead of giving up.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="features" aria-labelledby="ft-h">
+    <div class="wrap">
+      <div class="sec-head">
+        <div class="eyebrow">What it does</div>
+        <h2 id="ft-h">Everything a coding agent should, in your own terminal.</h2>
+      </div>
+      <div class="feats">
+        <div class="feat"><h3><b>01</b> Reads, edits, runs</h3><p>Opens and patches files, searches the project, runs shell commands and background servers, and shows every diff.</p></div>
+        <div class="feat"><h3><b>02</b> Smart approvals</h3><p>Edits in the folder and ordinary commands just run. Deleting, <code>git push</code>, global installs and writes outside the folder ask first.</p></div>
+        <div class="feat"><h3><b>03</b> Works with no key</h3><p>The keyless gateways kilo, llm7 and ovh sit at the end of the chain. Free keys from Groq, NVIDIA, OpenRouter, Cerebras or Gemini make it faster.</p></div>
+        <div class="feat"><h3><b>04</b> Skills</h3><p>Ten built in, a library of thirty, and any Claude Code skills you already have. A skill is one Markdown file.</p></div>
+        <div class="feat"><h3><b>05</b> Team mode</h3><p><code>forge -t</code> splits a task between models that plan, build and review each other's work.</p></div>
+        <div class="feat"><h3><b>06</b> Picks up where you left off</h3><p><code>forge -c</code> continues the last conversation in this folder; <code>forge -r</code> jumps to any saved one.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="screens" aria-labelledby="sc-h">
+    <div class="wrap">
+      <div class="sec-head">
+        <div class="eyebrow">Real screenshots</div>
+        <h2 id="sc-h">What it looks like.</h2>
+        <p>Taken in Windows Terminal, not mocked up.</p>
+      </div>
+      <div class="shots">
+        <figure class="wide">
+          <img class="shot" src="media/working.png" width="1410" height="697" loading="lazy" alt="Forge mid-turn: two skills picked, a 'Forge asks' box with numbered options, the courier sprite and a Thinking line">
+          <figcaption>Mid-turn: skills it picked, a question it asks you, and the status line.</figcaption>
+        </figure>
+        <figure>
+          <img class="shot" src="media/startup.png" width="1200" height="648" loading="lazy" alt="Forge start screen with the model, failover route, folder and approval mode">
+          <figcaption>Start screen: model, route, folder and approval mode.</figcaption>
+        </figure>
+        <figure>
+          <img class="shot" src="media/chat.png" width="1410" height="712" loading="lazy" alt="Forge replies with provider, model, time and token counts, under a pixel city with a DONE sign">
+          <figcaption>Replies show which provider and model answered. <code>/city on</code> adds the pixel city.</figcaption>
+        </figure>
+      </div>
+      <div class="courier" style="margin-top:20px">
+        <img src="media/courier.gif" width="746" height="618" loading="lazy" alt="Animated courier: a kid in headphones pushing a purple wheelbarrow of parcels">
+        <p>Instead of a spinner, a courier pushes a wheelbarrow of parcels along the status line while Forge works.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="install" aria-labelledby="in-h">
+    <div class="wrap">
+      <div class="sec-head">
+        <div class="eyebrow">Download</div>
+        <h2 id="in-h">Install in a minute.</h2>
+        <p>Whichever way you install it, the command is <code>forge</code>.</p>
+      </div>
+      <div class="tabs" role="tablist" aria-label="Install method">
+        <button class="tab" role="tab" id="t-pipx" aria-controls="p-pipx" aria-selected="true">pipx (recommended)</button>
+        <button class="tab" role="tab" id="t-pip" aria-controls="p-pip" aria-selected="false" tabindex="-1">pip</button>
+        <button class="tab" role="tab" id="t-exe" aria-controls="p-exe" aria-selected="false" tabindex="-1">Windows .exe</button>
+        <button class="tab" role="tab" id="t-src" aria-controls="p-src" aria-selected="false" tabindex="-1">From source</button>
+      </div>
+
+      <div class="panel" role="tabpanel" id="p-pipx" aria-labelledby="t-pipx" tabindex="0">
+        <ol class="steps">
+          <li><div><p>Install pipx if you don't have it.</p><div class="cmd"><code id="c1">python -m pip install --user pipx &amp;&amp; python -m pipx ensurepath</code><button class="copy" type="button" data-copy="c1">copy</button></div></div></li>
+          <li><div><p>Install Forge. pipx keeps it in its own environment.</p><div class="cmd"><code id="c2">pipx install forgecommandline</code><button class="copy" type="button" data-copy="c2">copy</button></div></div></li>
+          <li><div><p>Open a new terminal in any project folder and run it.</p><div class="cmd"><code id="c3">forge</code><button class="copy" type="button" data-copy="c3">copy</button></div></div></li>
+        </ol>
+      </div>
+
+      <div class="panel" role="tabpanel" id="p-pip" aria-labelledby="t-pip" tabindex="0" hidden>
+        <ol class="steps">
+          <li><div><p>Install with pip (Python 3.10 or newer).</p><div class="cmd"><code id="c4">python -m pip install forgecommandline</code><button class="copy" type="button" data-copy="c4">copy</button></div></div></li>
+          <li><div><p>Run it in any project folder.</p><div class="cmd"><code id="c5">forge</code><button class="copy" type="button" data-copy="c5">copy</button></div></div></li>
+          <li><div><p>Update later the same way.</p><div class="cmd"><code id="c6">python -m pip install -U forgecommandline</code><button class="copy" type="button" data-copy="c6">copy</button></div></div></li>
+        </ol>
+      </div>
+
+      <div class="panel" role="tabpanel" id="p-exe" aria-labelledby="t-exe" tabindex="0" hidden>
+        <ol class="steps">
+          <li><div><p>Download <code>forge-v<span class="ver">0.8.0</span>-windows-x64.zip</code> from the latest release. No Python needed.</p><a class="btn btn-primary rel" href="https://github.com/HSigei/forgeCLI/releases/latest">Download for Windows</a></div></li>
+          <li><div><p>Unzip it and put the folder with <code>forge.exe</code> on your PATH.</p></div></li>
+          <li><div><p>Open a new terminal and run it.</p><div class="cmd"><code id="c7">forge</code><button class="copy" type="button" data-copy="c7">copy</button></div></div></li>
+        </ol>
+      </div>
+
+      <div class="panel" role="tabpanel" id="p-src" aria-labelledby="t-src" tabindex="0" hidden>
+        <ol class="steps">
+          <li><div><p>Clone the repository.</p><div class="cmd"><code id="c8">git clone https://github.com/HSigei/forgeCLI.git &amp;&amp; cd forgeCLI</code><button class="copy" type="button" data-copy="c8">copy</button></div></div></li>
+          <li><div><p>Install it, or run <code>forge.cmd</code> directly on Windows.</p><div class="cmd"><code id="c9">python -m pip install .</code><button class="copy" type="button" data-copy="c9">copy</button></div></div></li>
+        </ol>
+      </div>
+
+      <p class="note"><b>First run:</b> <code>forge</code> opens <code>/setup</code> to add a provider key. You can skip it — the keyless gateways work straight away — or paste a key into the chat later; Forge files it under the right provider and redacts it.</p>
+    </div>
+  </section>
+
+  <section id="docs" aria-labelledby="dc-h">
+    <div class="wrap">
+      <div class="sec-head">
+        <div class="eyebrow">Documentation</div>
+        <h2 id="dc-h">The full guide.</h2>
+        <p>Commands, keys, failover settings, skills, team mode and configuration. Same text as the README.</p>
+      </div>
+      <details class="docs" id="docs-box">
+        <summary>Read the guide</summary>
+        <div id="readme"><p class="state">Loading the guide…</p></div>
+      </details>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Forge is open source under the MIT licence.</span>
+    <span><a class="gh" href="https://github.com/HSigei/forgeCLI">GitHub</a> · <a href="https://pypi.org/project/forgecommandline/">PyPI</a> · <a class="rel" href="https://github.com/HSigei/forgeCLI/releases/latest">Releases</a></span>
+  </div>
+</footer>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
 <script>
-  // The docs workflow copies README.md next to this page, so the site always matches the code.
-  var repo = (location.hostname.endsWith("github.io") ? location.hostname.split(".")[0] + "/" + (location.pathname.split("/")[1] || "forge-cli") : "");
-  if (repo) {
-    document.getElementById("gh").href = "https://github.com/" + repo;
-    document.getElementById("rel").href = "https://github.com/" + repo + "/releases/latest";
+(function () {
+  // Repo links: derive from the Pages URL (user.github.io/repo), fall back to the canonical repo.
+  var repo = "HSigei/forgeCLI";
+  if (location.hostname.endsWith("github.io")) {
+    var seg = location.pathname.split("/")[1];
+    if (seg) repo = location.hostname.split(".")[0] + "/" + seg;
   }
-  fetch("README.md").then(function (r) { if (!r.ok) throw 0; return r.text(); }).then(function (md) {
-    var el = document.getElementById("readme");
-    el.innerHTML = marked.parse(md);
-    el.querySelectorAll("a[href^='http']").forEach(function (a) { a.rel = "noopener"; a.target = "_blank"; });
-  }).catch(function () {
-    document.getElementById("readme").innerHTML = "<p>The guide couldn't load. Read it on GitHub instead.</p>";
+  document.querySelectorAll("a.gh").forEach(function (a) { a.href = "https://github.com/" + repo; });
+  document.querySelectorAll("a.rel").forEach(function (a) { a.href = "https://github.com/" + repo + "/releases/latest"; });
+
+  // Copy buttons
+  document.querySelectorAll("[data-copy]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var text = document.getElementById(b.dataset.copy).textContent;
+      var done = function (ok) {
+        b.textContent = ok ? "copied" : "select & copy";
+        if (ok) b.setAttribute("data-done", "");
+        setTimeout(function () { b.textContent = "copy"; b.removeAttribute("data-done"); }, 1600);
+      };
+      if (navigator.clipboard) navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); });
+      else done(false);
+    });
   });
+
+  // Tabs (WAI-ARIA pattern: arrow keys, Home and End move between tabs).
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('[role="tab"]'));
+  function select(t) {
+    tabs.forEach(function (x) {
+      var on = x === t;
+      x.setAttribute("aria-selected", on);
+      x.tabIndex = on ? 0 : -1;
+      document.getElementById(x.getAttribute("aria-controls")).hidden = !on;
+    });
+  }
+  tabs.forEach(function (t, i) {
+    t.addEventListener("click", function () { select(t); });
+    t.addEventListener("keydown", function (e) {
+      var j = e.key === "ArrowRight" ? i + 1 : e.key === "ArrowLeft" ? i - 1 : e.key === "Home" ? 0 : e.key === "End" ? tabs.length - 1 : null;
+      if (j === null) return;
+      e.preventDefault();
+      var n = tabs[(j + tabs.length) % tabs.length];
+      select(n); n.focus();
+    });
+  });
+
+  // Failover relay (signature interaction)
+  var hops = document.querySelectorAll("#chain .hop");
+  var out = document.getElementById("term-out");
+  var play = document.getElementById("play");
+  var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var script = [
+    [0, "try", "sending", null],
+    [0, "fail", "429", '<span class="y">  ⚠ groq · gpt-oss-120b failed (429 rate limit, benched 60s) → trying the next one</span>'],
+    [1, "try", "sending", null],
+    [1, "fail", "timeout", '<span class="y">  ⚠ nvidia · minimax-m3.1-flash failed (timed out) → trying the next one</span>'],
+    [2, "try", "sending", null],
+    [2, "ok", "answered", '<span class="p">● Skill</span>  debug · picked automatically\n<span class="c">● Shell</span>(python -m pytest tests/test_api.py)\n  ⎿  1 failed: expected 200, got 404\n<span class="c">● Update</span>(app/routes.py)\n  ⎿  Added 1 line, removed 1 line\n<span class="c">● Shell</span>(python -m pytest tests/test_api.py)\n  ⎿  <span class="g">3 passed</span>\n<span class="p">◆</span> The route was registered as /api/user; the test calls /api/users. Fixed the route and the test passes.\n<span class="d">  openrouter · nemotron-3-ultra:free · 9.4s</span>']
+  ];
+  var timer = null;
+  function reset() {
+    hops.forEach(function (h) { h.dataset.s = "idle"; h.querySelector(".st").textContent = "waiting"; });
+    out.innerHTML = '<span class="d">❯</span> fix the failing test in tests/test_api.py\n';
+  }
+  function run() {
+    clearTimeout(timer); reset();
+    play.disabled = true; play.textContent = "Running…";
+    var i = 0;
+    (function step() {
+      if (i >= script.length) { play.disabled = false; play.textContent = "↻ Replay"; return; }
+      var s = script[i++], h = hops[s[0]];
+      h.dataset.s = s[1]; h.querySelector(".st").textContent = s[2];
+      if (s[3]) out.innerHTML += s[3] + "\n";
+      timer = setTimeout(step, reduce ? 0 : (s[1] === "try" ? 900 : 500));
+    })();
+  }
+  play.addEventListener("click", run);
+  if (!reduce && "IntersectionObserver" in window) {
+    var io = new IntersectionObserver(function (es) {
+      if (es[0].isIntersecting) { io.disconnect(); run(); }
+    }, { threshold: 0.5 });
+    io.observe(document.getElementById("chain"));
+  }
+
+  // Docs: README.md is copied next to this page by the docs workflow.
+  var loaded = false;
+  var box = document.getElementById("docs-box");
+  function loadDocs() {
+    if (loaded) return; loaded = true;
+    var el = document.getElementById("readme");
+    fetch("README.md").then(function (r) { if (!r.ok) throw 0; return r.text(); }).then(function (md) {
+      el.innerHTML = window.marked ? marked.parse(md) : "<pre>" + md.replace(/</g, "&lt;") + "</pre>";
+      el.querySelectorAll("img[src^='docs/']").forEach(function (im) { im.src = im.getAttribute("src").slice(5); });
+      el.querySelectorAll("a[href^='http']").forEach(function (a) { a.rel = "noopener"; a.target = "_blank"; });
+    }).catch(function () {
+      loaded = false;
+      el.innerHTML = '<p class="state">The guide couldn\'t load. <a class="gh" href="https://github.com/' + repo + '#readme">Read it on GitHub</a> instead.</p>';
+    });
+  }
+  box.addEventListener("toggle", function () { if (box.open) loadDocs(); });
+  if (location.hash === "#docs") { box.open = true; }
+})();
 </script>
 </body>
 </html>
