@@ -208,7 +208,9 @@
   .feat .glyph { position: absolute; right: -6px; top: -14px; font: 400 140px/1 var(--pixel); color: var(--accent); opacity: .08; pointer-events: none; }
   @media (min-width: 961px) {
     .feat-pin.is-h .feat-track { display: flex; width: max-content; gap: 22px; padding-right: 10vw; }
-    .feat-pin.is-h .feat { width: min(420px, 34vw); min-height: 400px; }
+    .feat-pin.is-h { padding: 92px 0 32px; }
+    .feat-pin.is-h .sec-head { margin-bottom: 28px; }
+    .feat-pin.is-h .feat { width: min(420px, 34vw); min-height: 0; height: clamp(270px, calc(100vh - 380px), 420px); }
   }
   @media (max-width: 960px) { .feat-track { grid-template-columns: 1fr 1fr; } }
   @media (max-width: 600px) { .feat-track { grid-template-columns: 1fr; } }
@@ -964,7 +966,7 @@
 
   // features: horizontal track pinned on wide screens, cards rise on narrow ones
   var mm = G.matchMedia();
-  mm.add("(min-width: 961px)", function () {
+  mm.add("(min-width: 961px) and (min-height: 720px)", function () {
     var pin = $(".feat-pin"), track = $("#feat-track");
     pin.classList.add("is-h");
     var dist = function () { return Math.max(0, track.scrollWidth - track.parentElement.clientWidth); };
@@ -975,7 +977,7 @@
     });
     return function () { pin.classList.remove("is-h"); };
   });
-  mm.add("(max-width: 960px)", function () {
+  mm.add("(max-width: 960px), (max-height: 719px)", function () {
     G.from(".feat", { y: 40, opacity: 0, stagger: 0.08, duration: 0.8, ease: "expo.out", scrollTrigger: { trigger: "#feat-track", start: "top 85%" } });
   });
 
