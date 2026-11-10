@@ -2,10 +2,10 @@
 
 The repository is github.com/HSigei/forgeCLI.
 
-## PyPI (`pipx install forgecli`)
+## PyPI (`pipx install forgecommandline`)
 `.github/workflows/publish.yml` runs on a `v*` tag: tests, version check, build, upload with PyPI
 Trusted Publishing (no token stored). One-time setup on pypi.org: add a *pending publisher* for
-project `forgecli`, owner/repo, workflow `publish.yml`, environment `pypi`.
+project `forgecommandline`, owner/repo, workflow `publish.yml`, environment `pypi`.
 
 ## Windows exe (GitHub Releases)
 `.github/workflows/release.yml` runs on the same tag and attaches `forge-vX.Y.Z-windows-x64.zip`
@@ -29,7 +29,7 @@ Use package id `HSigei.Forge`, mark it as a `portable` zip with `forge.exe` as t
 versions: `wingetcreate update HSigei.Forge -u <new zip url> -v <version> --submit`.
 
 ## Homebrew
-Once there are macOS/Linux users, add a tap with a formula that does `pip install forgecli` into a
+Once there are macOS/Linux users, add a tap with a formula that does `pip install forgecommandline` into a
 virtualenv (`brew` "python" resource formula); not set up yet because the exe build is Windows-only.
 
 ## Docs site

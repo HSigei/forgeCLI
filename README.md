@@ -69,7 +69,7 @@ The banner is a high-resolution picture (sixel graphics) in terminals that can s
 
 For a local install from this source tree, run `python -m pip install .`; this registers the `forge`
 command and installs the bundled skills. The distribution name is `forgecli` (checked as available on
-PyPI during setup). After its first release, install it with `pipx install forgecli`.
+PyPI during setup). After its first release, install it with `pipx install forgecommandline`.
 
 GitHub Actions runs the offline regression suite on pushes and pull requests. Version tags run the same
 suite before a Trusted Publishing release to PyPI; the PyPI project must first be configured with this
