@@ -376,4 +376,15 @@ GitHub Actions runs the suite on every push. A `v*` tag runs it again, publishes
 trusted publishing (no token stored) and attaches a standalone `forge.exe` to a GitHub Release.
 `packaging/` has the Scoop manifest and winget and Homebrew notes.
 
-<p align="center"><sub>Powered by HK Labs</sub></p>
+## Licence and terms
+
+Forge's source code is licensed under the [Apache License 2.0](LICENSE). Using Forge also means
+accepting the [Terms of Use](TERMS.md), the [Disclaimer](DISCLAIMER.md) and the
+[Privacy Policy](PRIVACY.md). The Forge name, tiger mascot, courier and artwork are not covered
+by the licence; see [TRADEMARKS.md](TRADEMARKS.md). Report security issues as described in
+[SECURITY.md](SECURITY.md).
+
+Forge is provided "as is", without warranty of any kind. It acts on your computer using AI output
+that can be wrong: review what it does, use version control and keep backups.
+
+<p align="center"><sub>© 2026 Harry Sigei · Powered by HK Labs</sub></p>

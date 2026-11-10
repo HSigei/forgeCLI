@@ -1,0 +1,19 @@
+Forge (forgecommandline)
+Copyright 2026 Harry Sigei (HK Labs)
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+Use of Forge is also subject to TERMS.md, DISCLAIMER.md and PRIVACY.md.
+
+"Forge", "HK Labs", the Forge tiger mascot and the Forge courier character are
+not licensed under the Apache License. See TRADEMARKS.md.
+
+This product includes third-party material under its own licences:
+
+- skills/skill-inspector: adapted from NVIDIA SkillSpector
+  (https://github.com/NVIDIA/SkillSpector), Copyright 2026 NVIDIA CORPORATION &
+  AFFILIATES, Apache License 2.0. See skills/skill-inspector/LICENSE and NOTICE.
+- skills/library: third-party skill packs under the MIT licence.
+  See skills/library/LICENSES/.
+
+Python dependencies installed alongside Forge (rich, prompt_toolkit, PyYAML,
+keyring and others) are distributed under their own licences by their authors.

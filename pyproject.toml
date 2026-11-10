@@ -8,6 +8,8 @@ version = "0.8.0"
 description = "A terminal coding agent with provider failover"
 readme = "README.md"
 requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Harry Sigei (HK Labs)" }]
 dependencies = [
     "rich>=13.7",
     "prompt_toolkit>=3.0.40",
