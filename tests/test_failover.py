@@ -118,7 +118,7 @@ def serve(name):
 
 
 def main():
-    tmp = pathlib.Path(tempfile.mkdtemp())
+    tmp = pathlib.Path(tempfile.mkdtemp()).resolve()   # long path: CI temp dirs come back as 8.3 short names
     sessions.SESSION_DIR = tmp / "sessions"   # keep the user's real sessions untouched
     mcpmod.USAGE_FILE = tmp / "usage.json"
     import forgecli.providers as provmod
@@ -1505,7 +1505,7 @@ components:
     handoff_file = handoff_dir / "HANDOFF.md"
     handoff_file.write_text("handoff", encoding="utf-8")
     scoped_glob = search_tools.t_glob("**/HANDOFF*", str(search_root))
-    assert str(handoff_file) in scoped_glob
+    assert str(handoff_file.resolve()) in scoped_glob, scoped_glob
     print("ok  recursive searches reject home roots and find handoff files within a project")
 
     # 47. Persisted health demotes failing keys/models, stale skills stay searchable.
