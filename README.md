@@ -1,12 +1,6 @@
 <div align="center">
 
-```text
-    ▄
-   ▟█▙     █▀▀ █▀█ █▀█ █▀▀▀ █▀▀  v0.8.0
-  ▟███▙    █▀  █ █ █▀▄ █ ▀█ █▀▀
- ▐█◕‿◕█▌   ▀   ▀▀▀ ▀ ▀ ▀▀▀▀ ▀▀▀
-  ▀▀▀▀▀    multi-model coding agent · failover · team mode
-```
+<img src="docs/media/banner.png" alt="Forge: a pixel-art tiger cub beside a neon FORGE sign over a night city" width="100%">
 
 **A coding agent for your terminal that never stops at a rate limit.**<br>
 Forge reads and edits your files and runs commands. Every request can go to any of a dozen
@@ -26,57 +20,36 @@ pipx install forgecommandline
 
 ## What it looks like
 
-From a real session, trimmed. Run `forge` in any project folder:
+These are real screenshots from Windows Terminal. Run `forge` in any project folder:
 
-```text
-╭──────────────────────────────────────────────────────────────────────────╮
-│    ▄                                                                     │
-│   ▟█▙     █▀▀ █▀█ █▀█ █▀▀▀ █▀▀  v0.8.0                                   │
-│  ▟███▙    █▀  █ █ █▀▄ █ ▀█ █▀▀                                           │
-│ ▐█◕‿◕█▌   ▀   ▀▀▀ ▀ ▀ ▀▀▀▀ ▀▀▀                                           │
-│  ▀▀▀▀▀    multi-model coding agent · failover · team mode                │
-│                                                                          │
-│  model    groq · openai/gpt-oss-120b                                     │
-│  routing  groq → nvidia → openrouter → kilo → llm7 → ovh                 │
-│  folder   C:\Users\you\projects\site                                     │
-│  approval smart  risky steps ask first                                   │
-│  last     landing page  · 2h ago · /resume                               │
-╰──────────────────────────────────────────────────────────────────────────╯
-  /help commands   /model switch   /balance limits   ctrl+j new line   esc stop
+<img src="docs/media/startup.png" alt="Forge start screen: pixel-art banner, then a panel with the model, failover route, folder, approval mode and last conversation" width="100%">
 
-❯ just build me a simple landing page
+While it works, a courier pushes a wheelbarrow of parcels along the status line instead of a
+spinner. Skills it picks, questions it asks and its replies all appear in the chat:
 
-● Skill(web-build · picked automatically)
-  Listed 1 folder, searched 1 pattern
-● Write(index.html)
-  ⎿  Wrote 157 lines to index.html
-        1 <!DOCTYPE html>
-        2 <html lang="en">
-        …
-  ⚠ groq · gpt-oss-120b failed (429 rate limit, benched 34s) → trying the next one
-● Shell(python -m http.server 5999)
-  ⎿  running in background as process 2 · http://127.0.0.1:5999
-● Open(http://127.0.0.1:5999)
+<img src="docs/media/working.png" alt="Forge mid-turn: two skills picked, a 'Forge asks' box with numbered options, the courier sprite and a Thinking line" width="100%">
 
-● Built index.html: header, hero with install command, feature cards,
-  usage examples. It's open in your browser.
-  ovh · gpt-oss-120b · 7.9s · 20,138 in / 126 out tokens
+<p align="center"><img src="docs/media/courier.gif" alt="The courier: a kid in headphones pushing a purple wheelbarrow" width="220"></p>
 
- ◆ ovh · gpt-oss-120b   ctx 21k · used 24k tok   │ asks for risky only │ landing page
-```
+With `/city on`, a pixel city sits above the message box and its workers act out the same
+events; a green DONE sign lights up when a turn finishes:
 
-What you are seeing:
+<img src="docs/media/chat.png" alt="Forge chat: two short replies with provider, model, time and token counts, and the pixel city with a DONE sign" width="100%">
 
-| Line | Meaning |
+| What you see | Meaning |
 |---|---|
-| `● Skill(… picked automatically)` | Forge matched your request to a skill locally (no model call) and loaded its instructions |
+| `● Skill  web-build · picked automatically` | Forge matched your request to a skill locally (no model call) and loaded its instructions |
 | `● Write` · `● Update` · `● Shell` | every file change and command, with a preview, a coloured diff, or the first lines of output |
-| `Listed 1 folder, searched 1 pattern` | reads and searches fold into one quiet line |
+| `◆` | Forge's reply, followed by who answered, how long it took and how many tokens it used |
+| `? Forge asks` | a question with numbered answers; type a number or your own answer |
 | `⚠ … → trying the next one` | a provider failed; the next one continues the same turn, nothing is lost |
-| `provider · model · time · tokens` | who answered, how long it took, how many tokens it used |
+| `Thinking… 2s · ~6.3k context · ovh · …` | what is running right now; type to queue your next message |
 | bottom bar | current model, context size, approval mode, conversation title |
 
-When a step is risky, Forge stops and shows you exactly what it wants to do:
+In a terminal without sixel graphics (anything older than Windows Terminal 1.22, or not
+WezTerm), the art is drawn with half-block characters instead.
+
+When a step is risky, Forge stops and asks:
 
 ```text
 ┌─ ? Delete C:\Users\you\projects\site\old ─────────────────────────────────┐
@@ -85,17 +58,8 @@ When a step is risky, Forge stops and shows you exactly what it wants to do:
   Allow? yes · always for this kind · no ›
 ```
 
-And `/exit` leaves you a way back in:
-
-```text
-                         ▄
-                        ▟█▙
-                       ▟███▙  \
-                      ▐█^‿^█▌─╯
-                       ▀▀▀▀▀
-                    see you soon
-  forge -c  continues it here  ·  forge -r 20261110  from anywhere
-```
+`/exit` prints how to get back: `forge -c` continues the conversation in that folder, and
+`forge -r <id>` opens it from anywhere.
 
 ---
 
