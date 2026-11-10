@@ -1,0 +1,78 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "forgecli"
+version = "0.8.0"
+description = "A terminal coding agent with provider failover"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "rich>=13.7",
+    "prompt_toolkit>=3.0.40",
+    "PyYAML>=6.0",
+    "keyring>=25.0",
+]
+
+[project.scripts]
+forge = "forgecli.cli:main"
+
+[tool.setuptools]
+packages = ["forgecli"]
+
+[tool.setuptools.package-data]
+forgecli = ["courier_hd_data.bin"]
+
+[tool.setuptools.data-files]
+"skills/commit" = ["skills/commit/SKILL.md"]
+"skills/debug" = ["skills/debug/SKILL.md"]
+"skills/explain" = ["skills/explain/SKILL.md"]
+"skills/init" = ["skills/init/SKILL.md"]
+"skills/review" = ["skills/review/SKILL.md"]
+"skills/run" = ["skills/run/SKILL.md"]
+"skills/security-review" = ["skills/security-review/SKILL.md"]
+"skills/simplify" = ["skills/simplify/SKILL.md"]
+"skills/test" = ["skills/test/SKILL.md"]
+"skills/web-build" = ["skills/web-build/SKILL.md"]
+"skills/library/_references" = ["skills/library/_references/accessibility-checklist.md", "skills/library/_references/definition-of-done.md", "skills/library/_references/observability-checklist.md", "skills/library/_references/orchestration-patterns.md", "skills/library/_references/performance-checklist.md", "skills/library/_references/security-checklist.md", "skills/library/_references/testing-patterns.md"]
+"skills/library/api-and-interface-design" = ["skills/library/api-and-interface-design/SKILL.md"]
+"skills/library/awwwards-tier-web-application" = ["skills/library/awwwards-tier-web-application/SKILL.md"]
+"skills/library/architecture-optimization/references" = ["skills/library/architecture-optimization/references/artifact-templates.md", "skills/library/architecture-optimization/references/methods.md"]
+"skills/library/architecture-optimization" = ["skills/library/architecture-optimization/SKILL.md"]
+"skills/library/browser-testing-with-devtools" = ["skills/library/browser-testing-with-devtools/SKILL.md"]
+"skills/library/ci-cd-and-automation" = ["skills/library/ci-cd-and-automation/SKILL.md"]
+"skills/library/code-review-and-quality" = ["skills/library/code-review-and-quality/SKILL.md"]
+"skills/library/code-simplification" = ["skills/library/code-simplification/SKILL.md"]
+"skills/library/constraint-driven-development/references" = ["skills/library/constraint-driven-development/references/floor-guard.md"]
+"skills/library/constraint-driven-development" = ["skills/library/constraint-driven-development/SKILL.md"]
+"skills/library/context-engineering" = ["skills/library/context-engineering/SKILL.md"]
+"skills/library/debugging-and-error-recovery" = ["skills/library/debugging-and-error-recovery/SKILL.md"]
+"skills/library/deprecation-and-migration" = ["skills/library/deprecation-and-migration/SKILL.md"]
+"skills/library/documentation-and-adrs" = ["skills/library/documentation-and-adrs/SKILL.md"]
+"skills/library/doubt-driven-development" = ["skills/library/doubt-driven-development/SKILL.md"]
+"skills/library/frontend-ui-engineering" = ["skills/library/frontend-ui-engineering/SKILL.md"]
+"skills/library/git-workflow-and-versioning" = ["skills/library/git-workflow-and-versioning/SKILL.md"]
+"skills/library/idea-refine" = ["skills/library/idea-refine/examples.md", "skills/library/idea-refine/frameworks.md", "skills/library/idea-refine/refinement-criteria.md", "skills/library/idea-refine/SKILL.md"]
+"skills/library/idea-refine/scripts" = ["skills/library/idea-refine/scripts/idea-refine.sh"]
+"skills/library/improve-code-quality/references" = ["skills/library/improve-code-quality/references/artifact-templates.md"]
+"skills/library/improve-code-quality" = ["skills/library/improve-code-quality/SKILL.md"]
+"skills/library/incremental-implementation" = ["skills/library/incremental-implementation/SKILL.md"]
+"skills/library/interview-me" = ["skills/library/interview-me/SKILL.md"]
+"skills/library/LICENSES" = ["skills/library/LICENSES/agent-skills-MIT.txt", "skills/library/LICENSES/wondelai-MIT.txt"]
+"skills/library/observability-and-instrumentation" = ["skills/library/observability-and-instrumentation/SKILL.md"]
+"skills/library/performance-optimization/references" = ["skills/library/performance-optimization/references/optimization-patterns.md"]
+"skills/library/performance-optimization" = ["skills/library/performance-optimization/SKILL.md"]
+"skills/library/planning-and-task-breakdown" = ["skills/library/planning-and-task-breakdown/SKILL.md"]
+"skills/library" = ["skills/library/README.md"]
+"skills/library/remove-technical-debt/references" = ["skills/library/remove-technical-debt/references/artifact-templates.md"]
+"skills/library/remove-technical-debt" = ["skills/library/remove-technical-debt/SKILL.md"]
+"skills/library/security-and-hardening/references" = ["skills/library/security-and-hardening/references/hardening-patterns.md"]
+"skills/library/security-and-hardening" = ["skills/library/security-and-hardening/SKILL.md"]
+"skills/library/shipping-and-launch" = ["skills/library/shipping-and-launch/SKILL.md"]
+"skills/library/source-driven-development" = ["skills/library/source-driven-development/SKILL.md"]
+"skills/library/spec-driven-development" = ["skills/library/spec-driven-development/SKILL.md"]
+"skills/library/system-design/references" = ["skills/library/system-design/references/building-blocks.md", "skills/library/system-design/references/common-designs.md", "skills/library/system-design/references/database-scaling.md", "skills/library/system-design/references/estimation-numbers.md", "skills/library/system-design/references/four-step-process.md", "skills/library/system-design/references/reliability-operations.md"]
+"skills/library/system-design" = ["skills/library/system-design/SKILL.md"]
+"skills/library/test-driven-development" = ["skills/library/test-driven-development/SKILL.md"]
+"skills/library/using-agent-skills" = ["skills/library/using-agent-skills/SKILL.md"]

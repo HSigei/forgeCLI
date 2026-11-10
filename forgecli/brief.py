@@ -1,0 +1,215 @@
+"""The pinned brief: what the user asked for and already decided, kept in front of the model.
+
+Long builds overflow the context, and trimming used to drop the very things the model needed most:
+the real request (when the newest message was only "continue") and the answers to its own
+questions. With those gone it interviewed the user again, invented details ("product designer"),
+and re-read the same reference files. The brief is rebuilt from the full saved conversation before
+every request and joined to the system message, so trimming can never remove it.
+
+It also powers two guards on ask_user: a question on a topic the user already answered gets that
+answer back instead of reaching the user, and an interview is capped at a few questions."""
+from __future__ import annotations
+
+import functools
+import json
+import re
+
+ATTACH_MARK = "\n\n[Forge: the user attached"
+ANSWER_PREFIX = "The user answered: "
+MAX_QUESTIONS = 4          # ask_user calls per request before Forge says "build with what you have"
+
+_CONTINUE = re.compile(
+    r"^\s*(?:ok(?:ay)?|yes|yep|yeah|sure|go|go on|go ahead|continue|keep going|carry on|proceed|resume|"
+    r"next|do it|please continue|continue please|keep building|finish(?: it)?|carry on please)"
+    r"[\s.!,]*$", re.I)
+
+# Questions are compared by topic, not wording: "Which Hallmark theme resonates most?" and
+# "Which visual style appeals to you?" are the same question.
+TOPICS = {
+    "style": ("theme", "style", "visual", "look", "aesthetic", "vibe", "palette", "colour", "color",
+              "mood", "design direction", "feel"),
+    "goal": ("goal", "purpose", "aim", "objective", "visitors", "what do you want", "primary"),
+    "identity": ("your name", "who are you", "what do you do", "your role", "job title", "profession",
+                 "describe yourself", "occupation"),
+    "content": ("case stud", "projects", "work should", "show", "screenshots", "materials", "gallery",
+                "portfolio include", "content"),
+    "pages": ("one page", "multi-page", "multi page", "single page", "how many pages", "separate pages",
+              "sections"),
+    "audience": ("audience", "who is it for", "target", "who will"),
+    "stack": ("framework", "react", "plain html", "tech stack", "which language", "library"),
+}
+
+
+def topic(question: str) -> str | None:
+    q = (question or "").lower()
+    scores = {name: sum(1 for w in words if w in q) for name, words in TOPICS.items()}
+    best = max(scores, key=scores.get)
+    return best if scores[best] else None
+
+
+def _words(s: str) -> set[str]:
+    return {w for w in re.findall(r"[a-z]{4,}", (s or "").lower())}
+
+
+def similar(a: str, b: str) -> bool:
+    ta, tb = topic(a), topic(b)
+    if ta and ta == tb:
+        return True
+    wa, wb = _words(a), _words(b)
+    return bool(wa and wb) and len(wa & wb) / len(wa | wb) >= 0.5
+
+
+@functools.lru_cache(maxsize=512)
+def _continuation(text: str) -> bool:
+    from . import attach
+    if _CONTINUE.match(text):
+        return True
+    return len(text) < 600 and bool(_CONTINUE.match(attach.strip_paths(text)))
+
+
+def is_continuation(text) -> bool:
+    """'continue', 'yes', 'go on' … — also after attached paths are taken out of the text."""
+    return _continuation(own_text(text).strip())
+
+
+def own_text(content) -> str:
+    """The words the user typed, without Forge's attachment note."""
+    if isinstance(content, list):
+        content = " ".join(p.get("text", "") for p in content if isinstance(p, dict))
+    text = str(content or "")
+    return text.split(ATTACH_MARK, 1)[0]
+
+
+def _is_forge(text: str) -> bool:
+    return text.lstrip().startswith("[Forge")
+
+
+def requests(messages: list[dict]) -> list[str]:
+    """The user's own messages, oldest first, without Forge's injected notes."""
+    out = []
+    for m in messages:
+        if m.get("role") != "user":
+            continue
+        text = own_text(m.get("content")).strip()
+        if text and not _is_forge(text):
+            out.append(text)
+    return out
+
+
+def current_request(messages: list[dict]) -> str:
+    """The newest real request: 'continue' and friends point back to the one before."""
+    reqs = requests(messages)
+    for text in reversed(reqs):
+        if not is_continuation(text):
+            return text
+    return reqs[-1] if reqs else ""
+
+
+def answers(messages: list[dict]) -> list[tuple[str, str]]:
+    """Every (question, answer) pair from ask_user, oldest first."""
+    asked = {}
+    out = []
+    for m in messages:
+        if m.get("role") == "assistant":
+            for c in m.get("tool_calls") or []:
+                fn = c.get("function") or {}
+                if fn.get("name") == "ask_user":
+                    try:
+                        q = json.loads(fn.get("arguments") or "{}").get("question", "")
+                    except (ValueError, AttributeError):
+                        q = ""
+                    asked[c.get("id")] = str(q)
+        elif m.get("role") == "tool" and m.get("tool_call_id") in asked:
+            content = str(m.get("content") or "")
+            if content.startswith(ANSWER_PREFIX):
+                a = own_text(content[len(ANSWER_PREFIX):]).strip()
+                out.append((asked[m["tool_call_id"]], a))
+            elif content.startswith("Already answered"):
+                pass
+    return out
+
+
+def asked_since_request(messages: list[dict]) -> int:
+    """ask_user calls since the user's newest real (non-continuation) request."""
+    start = 0
+    for i, m in enumerate(messages):
+        if m.get("role") == "user":
+            text = own_text(m.get("content")).strip()
+            if text and not _is_forge(text) and not is_continuation(text):
+                start = i
+    n = 0
+    for m in messages[start:]:
+        for c in m.get("tool_calls") or [] if m.get("role") == "assistant" else []:
+            if (c.get("function") or {}).get("name") == "ask_user":
+                n += 1
+    return n
+
+
+def attachments(messages: list[dict]) -> list[str]:
+    """Attached paths, from user messages and from answers to ask_user."""
+    seen = []
+    for m in messages:
+        found = list(m.get("attachments") or [])
+        content = m.get("content")
+        if m.get("role") == "tool" and isinstance(content, str) and ATTACH_MARK in content:
+            note = content.split(ATTACH_MARK, 1)[1]
+            found += re.findall(r"^- (.+?)  \(", note, re.M)
+        for p in found:
+            if p not in seen:
+                seen.append(p)
+    return seen
+
+
+def _clip(s: str, n: int) -> str:
+    s = re.sub(r"\s+", " ", s).strip()
+    return s if len(s) <= n else s[:n - 1] + "…"
+
+
+def build(messages: list[dict], todo: list[dict] | None = None) -> str:
+    """The brief text, or '' when there is nothing worth pinning yet."""
+    reqs = requests(messages)
+    qa = answers(messages)
+    files = attachments(messages)
+    if len(reqs) < 2 and not qa and not files and not todo:
+        return ""   # a one-message conversation is fully visible anyway
+    lines = ["[Pinned brief: the user's own words and decisions, always current even when older "
+             "messages were trimmed. Never ask again about anything answered here and never invent "
+             "details that contradict it; build from it.]"]
+    current = current_request(messages)
+    earlier = [r for r in reqs if r != current and not is_continuation(r)][-5:]
+    if earlier:
+        lines.append("Earlier requests (oldest first):")
+        lines += [f"- {_clip(r, 300)}" for r in earlier]
+    if current:
+        lines.append(f"Current request: {_clip(current, 900)}")
+    if reqs and is_continuation(reqs[-1]) and current != reqs[-1]:
+        lines.append(f"The user's newest message was \"{_clip(own_text(reqs[-1]), 60)}\": keep working "
+                     "on the current request from where it stopped. Don't start over, don't re-read "
+                     "references you already used, and don't interview again.")
+    if qa:
+        lines.append("Answers the user already gave (final; do not ask these again):")
+        lines += [f"- Q: {_clip(q, 160)} → A: {_clip(a, 300)}" for q, a in qa[-12:]]
+    if files:
+        lines.append("Files the user attached (use them; exact paths):")
+        lines += [f"- {p}" for p in files[-10:]]
+    if todo:
+        open_items = [i.get("task", "") for i in todo if i.get("status") != "done"]
+        done_items = [i.get("task", "") for i in todo if i.get("status") == "done"]
+        if open_items:
+            lines.append("Plan, still open: " + "; ".join(_clip(t, 80) for t in open_items[:10]))
+        if done_items:
+            lines.append("Plan, done: " + "; ".join(_clip(t, 60) for t in done_items[:10]))
+    return "\n".join(lines)
+
+
+def reuse(messages: list[dict], question: str) -> str | None:
+    """A tool result for an ask_user that shouldn't reach the user, or None to ask it."""
+    for q, a in reversed(answers(messages)):
+        if similar(question, q):
+            return (f"Already answered — the user said: {a!r} (to: {_clip(q, 120)!r}). Don't ask again; "
+                    "use that answer.")
+    if asked_since_request(messages) > MAX_QUESTIONS:
+        return (f"You've already asked {MAX_QUESTIONS} questions for this request. Stop interviewing: "
+                "build now with the answers in the pinned brief, pick sensible defaults for anything "
+                "still open, and say which defaults you chose.")
+    return None
