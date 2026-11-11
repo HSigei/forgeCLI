@@ -2321,7 +2321,10 @@ components:
         for k in _saved:
             _os.environ.pop(k, None)
         old = {"id": "x", "since": time.time() - 30 * 86400}
+        _real = (adsmod.AD_SERVER, adsmod.AD_PUBLIC_KEY)
+        adsmod.AD_SERVER, adsmod.AD_PUBLIC_KEY = "", ""
         assert adsmod.allowed(old, True) == (False, "no ad server configured")
+        adsmod.AD_SERVER, adsmod.AD_PUBLIC_KEY = _real
         _os.environ["FORGE_ADS_URL"], _os.environ["FORGE_ADS_KEY"] = "https://ads.example", pub
         assert adsmod.allowed(old, True) == (True, "")
         assert not adsmod.allowed(old, False)[0]                                       # pipes, scripts, -p
