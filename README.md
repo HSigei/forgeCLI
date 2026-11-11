@@ -398,4 +398,4 @@ by the licence; see [TRADEMARKS.md](TRADEMARKS.md). Report security issues as de
 Forge is provided "as is", without warranty of any kind. It acts on your computer using AI output
 that can be wrong: review what it does, use version control and keep backups.
 
-<p align="center"><sub>© 2026 Harry Sigei · Powered by HK Labs</sub></p>
+<p align="center"><sub>HK Labs © 2026 Harry Sigei</sub></p>
