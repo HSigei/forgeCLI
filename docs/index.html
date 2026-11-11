@@ -107,8 +107,6 @@
   .top nav { display: flex; gap: 20px; margin-left: auto; align-items: center; }
   .top nav a:not(.btn) { color: var(--muted); text-decoration: none; font-size: 15px; }
   .top nav a:not(.btn):hover { color: var(--text); }
-  .style-pick { display: flex; align-items: center; gap: 8px; font: 12px var(--mono); color: var(--dim); }
-  .style-pick select { appearance: none; background: var(--panel); color: var(--text); border: 1px solid var(--line-2); border-radius: 8px; padding: 6px 28px 6px 10px; font: 13px var(--mono); cursor: pointer; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: calc(100% - 14px) 52%, calc(100% - 9px) 52%; background-size: 5px 5px; background-repeat: no-repeat; }
   .btn { display: inline-flex; align-items: center; gap: 8px; padding: 11px 18px; border-radius: min(var(--r), 10px); font: 600 15px var(--body); text-decoration: none; cursor: pointer; border: 1px solid transparent; transition: transform .2s var(--ease), background .2s, border-color .2s, color .2s; }
   .btn:active { transform: translateY(1px); }
   .btn-primary { background: var(--accent); color: var(--accent-ink); }
@@ -117,7 +115,7 @@
   .btn-ghost:hover { border-color: var(--accent-2); }
   .btn[disabled] { opacity: .6; cursor: default; }
   .top .btn { padding: 7px 13px; font-size: 14px; }
-  @media (max-width: 860px) { .top nav a.hide-sm, .style-pick span { display: none; } }
+  @media (max-width: 860px) { .top nav a.hide-sm { display: none; } }
 
   /* ── hero ── */
   .hero { padding: 120px 0 64px; }
@@ -237,6 +235,24 @@
   .sprite { width: 180px; aspect-ratio: 373 / 309; background: url(media/courier-sheet.webp) 0 0 / 800% 200% no-repeat; will-change: transform; }
   @media (max-width: 900px) { .crew { grid-template-columns: 1fr; } .mood-stage { aspect-ratio: 4 / 3; } .lane .sprite { width: 130px; } }
 
+  /* crew = a small side note, not a full section */
+  #crew { padding: 24px 0 72px; }
+  .crew-note { max-width: 600px; margin-left: auto; border-left: 2px solid var(--accent); padding: 4px 0 4px 18px; }
+  .crew-note .note-head { font: 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--dim); }
+  .crew-note h2 { margin: 4px 0 14px; font: 600 18px var(--display); color: var(--muted); }
+  #crew .crew { grid-template-columns: 1fr 1.6fr; gap: 12px; }
+  #crew .mood-stage { aspect-ratio: 4 / 3; }
+  #crew .mood-stage .tiger { width: 56%; }
+  #crew .card-cap { padding: 10px 12px 12px; }
+  #crew .card-cap h3 { font-size: 15px; }
+  #crew .card-cap p { font-size: 13px; }
+  #crew .moods { gap: 6px; margin-top: 8px; }
+  #crew .moods button { font-size: 11px; padding: 4px 9px; }
+  #crew .lane { min-height: 0; }
+  #crew .lane .sprite { width: 92px; }
+  #crew .lane-tip { font-size: 10px; left: 10px; top: 8px; }
+  @media (max-width: 600px) { .crew-note { margin-left: 0; } #crew .crew { grid-template-columns: 1fr; } #crew .lane { min-height: 150px; } }
+
   /* the courier that walks the bottom of the page while you scroll */
   .walker { position: fixed; left: 0; bottom: 6px; z-index: 20; width: 110px; pointer-events: none; transition: opacity .3s; }
   .walker.off { opacity: 0; }
@@ -326,8 +342,6 @@
     .top nav { display: none; position: absolute; top: 62px; left: 0; right: 0; flex-direction: column; align-items: stretch; gap: 0; margin: 0; padding: 6px 20px 18px; background: var(--bg); border-bottom: 1px solid var(--line); }
     .top.open nav { display: flex; }
     .top nav a.hide-sm { display: block; padding: 13px 0; border-bottom: 1px solid var(--line); font-size: 17px; color: var(--text); }
-    .style-pick { padding-top: 14px; justify-content: space-between; }
-    .style-pick span { display: inline; }
   }
 
   /* phones: swipe rails, compact relay, sticky install bar */
@@ -425,16 +439,6 @@
       <a class="hide-sm" href="#failover">Failover</a>
       <a class="hide-sm" href="#crew">Crew</a>
       <a class="hide-sm" href="#docs">Docs</a>
-      <label class="style-pick"><span>style</span>
-        <select id="style" aria-label="Page style">
-          <option value="console">Console</option>
-          <option value="precision">Precision</option>
-          <option value="editorial">Editorial</option>
-          <option value="warm">Warm</option>
-          <option value="studio">Studio</option>
-          <option value="spatial">Spatial</option>
-        </select>
-      </label>
     </nav>
     <a class="btn btn-primary nav-cta" href="#install">Install</a>
     <button class="menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="main-nav" aria-label="Menu"><span></span><span></span></button>
@@ -522,10 +526,9 @@
 
   <section id="crew" aria-labelledby="cr-h">
     <div class="wrap">
-      <div class="sec-head">
-        <div class="eyebrow">the crew</div>
-        <h2 id="cr-h" class="display">Two coworkers <em>who live in your terminal.</em></h2>
-      </div>
+      <aside class="crew-note">
+        <div class="note-head">side note · the crew</div>
+        <h2 id="cr-h">Two coworkers who live in your terminal.</h2>
       <div class="crew">
         <div class="card">
           <div class="mood-stage" id="mood-stage"></div>
@@ -552,6 +555,7 @@
           </div>
         </div>
       </div>
+      </aside>
     </div>
   </section>
 
@@ -672,22 +676,6 @@
   }
   $$("a.gh").forEach(function (a) { a.href = "https://github.com/" + repo; });
   $$("a.rel").forEach(function (a) { a.href = "https://github.com/" + repo + "/releases/latest"; });
-
-  /* ── style switcher ── */
-  var sel = $("#style");
-  var saved = null;
-  try { saved = new URLSearchParams(location.search).get("style") || localStorage.getItem("forge-style"); } catch (e) {}
-  function setStyle(v) {
-    document.documentElement.dataset.theme = v;
-    sel.value = v;
-    try { localStorage.setItem("forge-style", v); } catch (e) {}
-    if (ST) requestAnimationFrame(function () { ST.refresh(); });
-  }
-  if (saved && sel.querySelector('option[value="' + saved + '"]')) setStyle(saved);
-  sel.addEventListener("change", function () {
-    if (G && !reduce) G.fromTo("main", { opacity: 0.35 }, { opacity: 1, duration: 0.5, ease: "power2.out" });
-    setStyle(sel.value);
-  });
 
   /* ── the tiger, drawn from the same shapes as forgecli/art.py ── */
   var uid = 0;
@@ -889,7 +877,6 @@
   });
   document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeMenu(); });
   $$("#main-nav a").forEach(function (a) { a.addEventListener("click", closeMenu); });
-  sel.addEventListener("change", closeMenu);
 
   /* ── touch screens get touch wording ── */
   if (window.matchMedia("(hover: none)").matches) {
