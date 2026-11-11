@@ -31,8 +31,8 @@ import unicodedata
 import urllib.parse
 import urllib.request
 
-AD_SERVER = ""          # e.g. "https://ads.forge-cli.dev" once deployed
-AD_PUBLIC_KEY = ""      # hex Ed25519 public key printed by `python -m forgecli.ads keygen`
+AD_SERVER = "https://forge-ads.harrysigei.workers.dev"          # e.g. "https://ads.forge-cli.dev" once deployed
+AD_PUBLIC_KEY = "a9deeab65cd6d48842f90b92fff1152a475763614c1848ac2e3e25f13d2dbf1c"      # hex Ed25519 public key printed by `python -m forgecli.ads keygen`
 TIMEOUT = 2.5
 QUIET_DAYS = 7
 MAX_TEXT, MAX_URL = 90, 100
