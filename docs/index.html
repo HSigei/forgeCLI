@@ -237,9 +237,10 @@
 
   /* crew = a small side note, not a full section */
   #crew { padding: 24px 0 72px; }
-  .crew-note { max-width: 600px; margin-left: auto; border-left: 2px solid var(--accent); padding: 4px 0 4px 18px; }
-  .crew-note .note-head { font: 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--dim); }
-  .crew-note h2 { margin: 4px 0 14px; font: 600 18px var(--display); color: var(--muted); }
+  .crew-note { max-width: 680px; margin: 0 auto; text-align: center; }
+  .crew-note h2 { margin: 8px 0 6px; font: var(--d-weight) clamp(26px, 3vw, 34px) var(--display); letter-spacing: var(--d-track); }
+  .crew-sub { margin: 0 0 20px; color: var(--muted); font-size: 15px; }
+  #crew .crew { text-align: left; }
   #crew .crew { grid-template-columns: 1fr 1.6fr; gap: 12px; }
   #crew .mood-stage { aspect-ratio: 4 / 3; }
   #crew .mood-stage .tiger { width: 56%; }
@@ -251,7 +252,7 @@
   #crew .lane { min-height: 0; }
   #crew .lane .sprite { width: 92px; }
   #crew .lane-tip { font-size: 10px; left: 10px; top: 8px; }
-  @media (max-width: 600px) { .crew-note { margin-left: 0; } #crew .crew { grid-template-columns: 1fr; } #crew .lane { min-height: 150px; } }
+  @media (max-width: 600px) { #crew .crew { grid-template-columns: 1fr; } #crew .lane { min-height: 150px; } }
 
   /* the courier that walks the bottom of the page while you scroll */
   .walker { position: fixed; left: 0; bottom: 6px; z-index: 20; width: 110px; pointer-events: none; transition: opacity .3s; }
@@ -527,8 +528,9 @@
   <section id="crew" aria-labelledby="cr-h">
     <div class="wrap">
       <aside class="crew-note">
-        <div class="note-head">side note · the crew</div>
-        <h2 id="cr-h">Two coworkers who live in your terminal.</h2>
+        <div class="eyebrow">the crew</div>
+        <h2 id="cr-h">Meet the crew.</h2>
+        <p class="crew-sub">Two little coworkers who keep you company while Forge works. Go on, poke them.</p>
       <div class="crew">
         <div class="card">
           <div class="mood-stage" id="mood-stage"></div>
