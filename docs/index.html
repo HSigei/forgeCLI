@@ -145,12 +145,20 @@
   @media (max-width: 480px) { .cmd { font-size: 13px; padding-left: 12px; } .lede { font-size: 17px; } }
 
   /* ── the night scene ── */
-  .scene { position: relative; aspect-ratio: 16 / 11; max-height: 620px; width: 100%; border-radius: var(--r); overflow: hidden; background: linear-gradient(#08051a 0%, #140936 38%, #2c0d54 64%, #5c1670 82%, #962480 100%); box-shadow: 0 40px 100px -40px #ff4fd870, inset 0 0 0 1px #ffffff14; isolation: isolate; }
+  /* No frame: the night city dissolves into the hero at every edge, like part of the page. */
+  .scene { position: relative; aspect-ratio: 16 / 11; max-height: 620px; width: 100%; isolation: isolate; }
+  .scene::before { content: ""; position: absolute; inset: -6% -10% 0; z-index: -1; pointer-events: none;
+    background: radial-gradient(ellipse 60% 55% at 55% 78%, #962480aa, #5c167066 45%, transparent 75%);
+    filter: blur(8px); }
+  .scene .layer, .scene .street { -webkit-mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent); }
+  .scene .stars { -webkit-mask-image: radial-gradient(ellipse 55% 70% at 55% 40%, #000 30%, transparent 75%);
+    mask-image: radial-gradient(ellipse 55% 70% at 55% 40%, #000 30%, transparent 75%); }
   .scene .layer { position: absolute; left: -4%; width: 108%; pointer-events: none; }
   .scene .stars { top: 0; height: 70%; }
   .scene .far { bottom: 17%; height: 52%; }
   .scene .near { bottom: 15%; height: 36%; }
-  .scene .street { position: absolute; left: 0; right: 0; bottom: 0; height: 15.5%; background: linear-gradient(#1a0a2a, #07040f); border-top: 2px solid #ff4fd8aa; box-shadow: 0 -6px 30px #ff4fd855; }
+  .scene .street { position: absolute; left: 0; right: 0; bottom: 0; height: 15.5%; background: linear-gradient(#1a0a2acc, transparent); border-top: 2px solid #ff4fd8aa; box-shadow: 0 -6px 30px #ff4fd855; }
   .scene .street::after { content: ""; position: absolute; left: 0; right: 0; top: 46%; height: 3px; background: repeating-linear-gradient(90deg, #3ef0ff88 0 26px, transparent 26px 60px); animation: road 1.6s linear infinite; }
   @keyframes road { to { background-position: -60px 0; } }
   .moon { position: absolute; right: 9%; top: 9%; width: 9%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff4fb, #ffc8ee 60%, #ff9fe0); box-shadow: 0 0 40px #ff9fe0aa, 0 0 120px #ff4fd855; }
@@ -160,7 +168,8 @@
   .tiger { width: 100%; height: 100%; overflow: visible; display: block; }
   .bubble { position: absolute; left: 36%; top: 7%; max-width: 50%; padding: 10px 14px; background: #fff8f0; color: #1a081e; font: 600 14px/1.35 var(--mono); border-radius: 14px; box-shadow: 4px 4px 0 #ff4fd8; z-index: 4; opacity: 0; pointer-events: none; }
   .bubble::after { content: ""; position: absolute; left: 16px; bottom: -9px; border: 9px solid transparent; border-bottom: 0; border-top-color: #fff8f0; }
-  .scene-hint { position: absolute; left: 12px; top: 10px; font: 11px var(--mono); color: #ffffff70; letter-spacing: .06em; z-index: 4; }
+  .scene-hint { position: absolute; left: 8%; bottom: 4%; font: 11px var(--mono); color: #ffffff80; letter-spacing: .1em; z-index: 4; }
+  .scene-hint::before { content: "↑ "; color: var(--cyan); }
   @media (max-width: 480px) { .bubble { font-size: 12px; left: 30%; max-width: 64%; } }
 
   /* ── sections ── */
