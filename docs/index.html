@@ -118,7 +118,12 @@
   @media (max-width: 860px) { .top nav a.hide-sm { display: none; } }
 
   /* ── hero ── */
-  .hero { padding: 120px 0 64px; }
+  .hero { padding: 120px 0 64px; position: relative; isolation: isolate; }
+  /* ShaderGradient (shadergradient.co) behind the hero: soft, slow, fades into the page */
+  .hero-gradient { position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: 0; transition: opacity 1.6s ease;
+    -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent); mask-image: linear-gradient(to bottom, #000 55%, transparent); }
+  .hero-gradient.on { opacity: .45; }
+  .hero-gradient canvas { width: 100% !important; height: 100% !important; }
   .hero-grid { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 48px; align-items: center; }
   .hero-grid > * { min-width: 0; }
   .hero h1 { margin: 16px 0 0; font-size: clamp(40px, 4.7vw, 70px); line-height: 1.0; }
@@ -448,6 +453,7 @@
 
 <main id="top">
   <div class="hero">
+    <div class="hero-gradient" id="hero-gradient" aria-hidden="true"></div>
     <div class="wrap hero-grid">
       <div class="hero-text">
         <div class="eyebrow">terminal coding agent · v<span class="ver">0.8.0</span></div>
@@ -658,6 +664,36 @@
 
 <div class="sprite walker" id="walker" aria-hidden="true"></div>
 
+<script type="module">
+  // Animated hero background from ShaderGradient (https://shadergradient.co), in Forge's neon colours.
+  // Loaded after the page, skipped without WebGL; holds still for people who prefer reduced motion.
+  const el = document.getElementById("hero-gradient");
+  const gl = (() => { try { const c = document.createElement("canvas"); return !!(c.getContext("webgl2") || c.getContext("webgl")); } catch (e) { return false; } })();
+  if (el && gl) {
+    try {
+      // Pinned to the versions the library was built with (React 18, fiber 8, three 0.169).
+      const v = "react@18.3.1,react-dom@18.3.1,@react-three/fiber@8.17.10,three@0.169.0";
+      const [React, ReactDOM, SG] = await Promise.all([
+        import("https://esm.sh/react@18.3.1"),
+        import("https://esm.sh/react-dom@18.3.1/client?deps=react@18.3.1"),
+        import(`https://esm.sh/@shadergradient/react@2.4.20?deps=${v}`),
+      ]);
+      const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const h = React.createElement;
+      ReactDOM.createRoot(el).render(
+        h(SG.ShaderGradientCanvas, { style: { position: "absolute", inset: 0 }, pixelDensity: 1, fov: 45, pointerEvents: "none", lazyLoad: false },
+          h(SG.ShaderGradient, {
+            type: "waterPlane", animate: still ? "off" : "on", uTime: 0.2, uSpeed: 0.12,
+            uStrength: 2.4, uDensity: 1.3, uFrequency: 5.5, uAmplitude: 1,
+            positionX: 0, positionY: 0, positionZ: 0, rotationX: 50, rotationY: 0, rotationZ: -60,
+            color1: "#ff4fd8", color2: "#3a1a6e", color3: "#3ef0ff",
+            reflection: 0.1, brightness: 1.1, lightType: "3d", envPreset: "city", grain: "on",
+            cAzimuthAngle: 180, cPolarAngle: 80, cDistance: 2.8, cameraZoom: 9.1,
+          })));
+      setTimeout(() => el.classList.add("on"), 300);
+    } catch (e) { /* no gradient: the plain dark background stays */ }
+  }
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
 <script src="https://unpkg.com/lenis@1.1.13/dist/lenis.min.js"></script>
