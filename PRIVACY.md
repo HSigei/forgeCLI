@@ -26,7 +26,8 @@ Forge only sends data where it must to do the work you ask for:
 | AI providers you configure (for example Groq, NVIDIA, OpenRouter, OpenAI, Google Gemini, Cerebras, Mistral) | your messages, and the file contents, command output and context Forge needs for the request, plus your API key for that provider | every request to a model |
 | Keyless gateways (kilo, llm7, ovh) | the same as above, without a key | only if every keyed provider failed and keyless gateways are enabled (`FORGE_KEYLESS=0` turns them off) |
 | Web search (DuckDuckGo) | the search query | only when Forge searches the web |
-| GitHub | requests needed to sign in, read repositories, or check for updates | only when you use those features |
+| GitHub | requests needed to sign in or read repositories | only when you use those features |
+| PyPI (pypi.org) | a request for the newest Forge version number, with the Forge version in the user agent; nothing about you or your project | at most once a day in an interactive session (`FORGE_UPDATE_CHECK=0` turns it off), and when you run `/update` |
 | Sponsor-line server (if enabled in your version) | a random install identifier, the Forge version and the id of the last sponsor line shown, to count daily users, choose at most one sponsor line per day and count views; clicking a sponsor link goes through the same server so the click is counted | about once a session; in the first 7 days at most once a day, and no line is shown |
 
 **These providers are independent of us.** Each one handles your data under its own terms and

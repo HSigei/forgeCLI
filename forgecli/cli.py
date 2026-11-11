@@ -62,12 +62,15 @@ COMMANDS = {
     "/github": "/github status · login · logout — GitHub sign-in (device code, no gh needed)",
     "/yes": "toggle auto-approve for everything",
     "/verbose": "toggle the key rotation / failover log",
+    "/update": "check for a newer Forge and install it: /update · /update check",
     "/exit": "quit",
 }
 BOM = chr(0xFEFF)
 APPROVAL_TEXT = {"smart": "smart — edits in this folder and safe commands just run; risky ones ask",
                  "ask": "ask — every write, edit and command asks first",
                  "auto": "AUTO — nothing asks (careful)"}
+RELEASES = "https://github.com/HSigei/forgeCLI/releases/latest"
+
 ALIASES = {"/clear": "/new", "/quit": "/exit", "/q": "/exit", "/m": "/model", "/s": "/sessions",
            "/r": "/resume", "/?": "/help"}
 
@@ -116,6 +119,13 @@ class App:
                  fact("approval", mode, "warn" if mode == "auto" else "accent")
                  .append({"smart": "  risky steps ask first", "ask": "  every change asks first",
                           "auto": "  nothing asks (careful)"}[mode], style="faint")]
+        try:
+            from . import update as upd
+            newest = upd.cached()
+        except Exception:
+            newest = None
+        if newest:
+            facts.append(fact("update", f"{__version__} → {newest} is out  ", "warn").append("/update", style="accent"))
         if not self.agent.session.messages:
             last = next((s for s in sess.list_sessions()
                          if os.path.normcase(s["cwd"]) == os.path.normcase(os.getcwd())), None)
@@ -167,6 +177,8 @@ class App:
         arg = parts[1].strip() if len(parts) > 1 else ""
         if cmd == "/exit":
             return False
+        if cmd == "/update" and arg.lower() not in ("check", "status"):
+            return self.cmd_update(arg)
         if cmd == "/review":
             self.run("Review the current git diff for concrete bugs and regressions. "
                      "Start with git status and git diff, inspect relevant surrounding code, "
@@ -742,6 +754,46 @@ class App:
                          " (list prices, cached-input discounts not counted; free tiers cost $0; "
                          "your own prices go in ~/.forge/prices.json)")
 
+    def cmd_update(self, arg):
+        """/update check: say whether a newer version exists. /update: install it. Returns False to quit."""
+        from . import update as upd
+        self.ui.info("checking pypi.org for the newest Forge…")
+        latest = upd.fetch()
+        if not latest:
+            self.ui.error("couldn't reach pypi.org — check your connection and try again")
+            return True
+        if not upd.newer(latest):
+            self.ui.info(f"you're up to date: Forge {__version__} is the newest version")
+            return True
+        kind, cmd = upd.how_installed()
+        self.ui.info(f"Forge {latest} is out (you have {__version__})")
+        if arg.lower() in ("check", "status"):
+            self.ui.info("type /update to install it")
+            return True
+        if kind == "exe":
+            self.ui.info(f"download the new forge.exe zip from {RELEASES} and replace the old forge.exe")
+            return True
+        if kind == "source" or not cmd:
+            self.ui.info("this Forge runs from a source folder: update it with  git pull  in that folder")
+            return True
+        line = " ".join(cmd)
+        if os.name == "nt":
+            if self.ui.confirm("Close Forge and update now?", line, "installs the new version")[0] == "n":
+                return True
+            if upd.run_after_exit(cmd):
+                self.ui.info("Forge will close; the update runs in a new window. Your conversation is saved (forge -c).")
+                return False
+            self.ui.error(f"couldn't start the updater — close Forge and run:  {line}")
+            return True
+        if self.ui.confirm("Update Forge now?", line, "installs the new version")[0] == "n":
+            return True
+        code = subprocess.run(cmd).returncode
+        if code == 0:
+            self.ui.info(f"updated to {latest} — restart Forge to use it (forge -c continues this conversation)")
+        else:
+            self.ui.error(f"the update failed (exit {code}) — try running it yourself:  {line}")
+        return True
+
     def cmd_ads(self, arg):
         from . import ads as adsmod
         word = arg.strip().lower()
@@ -750,6 +802,7 @@ class App:
             st["off"] = True
             adsmod.save_state(st)
             self.ads = None
+            self.ui.sponsor = None
             self.ui.info("Sponsor lines are off for good on this computer (/ads on brings them back).")
         elif word == "on":
             st["off"] = False
@@ -1114,6 +1167,11 @@ class App:
             self.ads = None
         # The sponsor line sits faintly under the working status (never in the reply or the model).
         self.ui.sponsor = (lambda: self.ads.line(wait=False)) if self.ads and self.ads.ok else None
+        try:
+            from . import update as upd
+            upd.check_in_background()              # once a day, cached for the next start's banner
+        except Exception:
+            pass
         prompt = make_prompt(self)
         self.banner()
         if os.environ.get("FORGE_AUTO_BENCH", "1").strip().lower() not in ("0", "off", "false", "no"):
@@ -1572,8 +1630,24 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("-t", "--team", action="store_true", help="start in team mode (a coordinator delegates by strength)")
     ap.add_argument("--roster", action="store_true", help="show what each model is good at and exit")
     ap.add_argument("--json", action="store_true", help="emit one-shot prompt results as JSON on stdout")
+    ap.add_argument("--update", action="store_true", help="install the newest Forge from PyPI and exit")
     ap.add_argument("--version", action="version", version=f"forge {__version__}")
     args = ap.parse_args(argv)
+    if args.update:
+        from . import update as upd
+        latest = upd.fetch()
+        if latest and not upd.newer(latest):
+            print(f"Forge {__version__} is the newest version.")
+            return 0
+        kind, cmd = upd.how_installed()
+        if kind == "exe":
+            print(f"Download the new forge.exe zip from {RELEASES} and replace the old forge.exe.")
+            return 0
+        if kind == "source" or not cmd:
+            print("This Forge runs from a source folder: update it with  git pull  there.")
+            return 0
+        print(f"Updating Forge {__version__} → {latest or 'newest'}:  {' '.join(cmd)}")
+        return subprocess.run(cmd).returncode
     if args.json and not args.prompt:
         ap.error("--json requires a one-shot prompt")
     if args.json:

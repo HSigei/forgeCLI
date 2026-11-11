@@ -76,6 +76,13 @@ When a step is risky, Forge stops and asks:
 
 The command is `forge` whichever way you install it.
 
+**Updates.** Forge checks PyPI once a day in the background and shows `update  0.8.0 → 0.9.0 is out`
+on the start screen when there's a newer version. Nothing installs by itself: type `/update`
+(or run `forge --update`) to install it — it picks `pipx upgrade` or `pip install --upgrade` to match
+how you installed. On Windows Forge closes and the update finishes in a new window; your conversation
+is saved, so `forge -c` picks it up. `/update check` only checks. The `.exe` build points you to the
+new zip on Releases. Turn the daily check off with `FORGE_UPDATE_CHECK=0`.
+
 ## First run
 
 ```powershell
@@ -132,7 +139,7 @@ when the current one finishes. Images go only to a model that can see them.
 | `/status` · `/balance` · `/cost` · `/doctor` | keys and rests, limits left, money spent, health |
 | `/keys [add\|test\|remove]` · `/setup` | manage keys |
 | `/github login\|status\|logout` · `/review` | GitHub sign-in · review the current diff |
-| `/memory` · `/commands` · `/city` · `/ads` · `/help` · `/exit` | |
+| `/memory` · `/commands` · `/city` · `/ads` · `/update` · `/help` · `/exit` | |
 
 ---
 
