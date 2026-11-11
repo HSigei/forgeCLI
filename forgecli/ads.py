@@ -1,4 +1,4 @@
-"""One sponsor line, shown on the goodbye screen, under the rules in HANDOFF.md (NEXT 8).
+"""One faint sponsor line, shown under the working status while Forge is busy, under the rules in HANDOFF.md (NEXT 8).
 
 - Off unless an ad server is configured (FORGE_ADS_URL, or AD_SERVER below once Harry runs one) and
   its public key is known (FORGE_ADS_KEY / AD_PUBLIC_KEY). Users turn it off with FORGE_ADS=0 or
@@ -267,7 +267,7 @@ def check(ad: dict, key_hex: str | None = None, now: float | None = None) -> dic
 # --- fetching and showing ---------------------------------------------------------------------------
 
 class Ads:
-    """Starts one background fetch per session; `line()` gives the goodbye line, if any."""
+    """Starts one background fetch per session; `line()` gives the sponsor line, if any."""
 
     def __init__(self, version: str, interactive: bool | None = None):
         self.version = version
@@ -306,10 +306,11 @@ class Ads:
         except Exception:
             self.ad = None      # offline or slow: fall back to the cached ad below
 
-    def line(self) -> str | None:
+    def line(self, wait: bool = True) -> str | None:
+        """The sponsor line, shown faintly under Forge's working status. Counted as seen once."""
         if not self.ok:
             return None
-        if self._thread is not None:
+        if self._thread is not None and wait:
             self._thread.join(timeout=0.05)     # never hold up quitting
         ad = self.ad
         if ad is None:

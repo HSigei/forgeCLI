@@ -55,7 +55,7 @@ COMMANDS = {
     "/approve": "/approve smart|ask|auto — when to ask before changes (smart: only risky ones)",
     "/balance": "tokens used, rate limits left and credits per provider",
     "/cost": "tokens this session, and the money they would cost on paid plans",
-    "/ads": "sponsor line on the goodbye screen: /ads status · off · on · reset",
+    "/ads": "small sponsor line under the working status: /ads status · off · on · reset",
     "/commands": "list project slash commands from .forge/commands/",
     "/memory": "/memory [user|project] — show saved notes",
     "/review": "review the current git diff for correctness issues",
@@ -754,7 +754,7 @@ class App:
         elif word == "on":
             st["off"] = False
             adsmod.save_state(st)
-            self.ui.info("Sponsor lines allowed again: at most one, on the goodbye screen.")
+            self.ui.info("Sponsor line allowed again: one faint line under the status while Forge works.")
         elif word == "reset":
             st.pop("id", None)
             st.pop("cached", None)
@@ -763,7 +763,7 @@ class App:
         elif word in ("", "status"):
             ok, why = adsmod.allowed(st)
             self.ui.info(f"sponsor line: {'on' if ok else 'not shown — ' + why}")
-            self.ui.info("Shown only on the goodbye screen, never in pipes, scripts, CI or forge -p. The ad request "
+            self.ui.info("Shown as one faint line under the working status (after a few seconds of work), never in pipes, scripts, CI or forge -p. The ad request "
                          "sends only Forge's version and a random install id — no prompts, code, paths or keys. "
                          "Ads must be signed by Forge's key, are cleaned to plain text and never reach the model.")
             self.ui.info("Turn off: /ads off, or FORGE_ADS=0. New install id: /ads reset.")
@@ -1100,10 +1100,6 @@ class App:
             lines.append((f"forge -c  continues it here  ·  forge -r {s.id[:8]}  from anywhere", "faint"))
         else:
             lines.append(("forge -r  picks up any saved conversation", "faint"))
-        ad = getattr(self, "ads", None)
-        sponsor = ad.line() if ad else None
-        if sponsor:
-            lines.append((sponsor, "faint"))
         try:
             uimod.goodbye(lines, animate=os.environ.get("FORGE_BYE_ANIMATION", "1") != "0")
         except Exception:
@@ -1116,6 +1112,8 @@ class App:
             self.ads = adsmod.Ads(__version__)     # fetches quietly in the background, if allowed at all
         except Exception:
             self.ads = None
+        # The sponsor line sits faintly under the working status (never in the reply or the model).
+        self.ui.sponsor = (lambda: self.ads.line(wait=False)) if self.ads and self.ads.ok else None
         prompt = make_prompt(self)
         self.banner()
         if os.environ.get("FORGE_AUTO_BENCH", "1").strip().lower() not in ("0", "off", "false", "no"):

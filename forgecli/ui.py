@@ -339,12 +339,25 @@ class _Live:
             scene = u._scene_ansi(max(20, console.width))
             if scene:
                 parts.insert(0, Text.from_ansi(scene.rstrip("\n")))
+        # One faint sponsor line under the status, only once a task has run a few seconds.
+        tail = []
+        sp = getattr(u, "sponsor", None)
+        if sp and secs >= SPONSOR_AFTER:
+            try:
+                line = sp()
+            except Exception:
+                line = None
+            if line:
+                tail.append(Text("    " + line, style="faint", overflow="ellipsis", no_wrap=True))
         if sprite:
             # The courier stands on the status line: words sit beside his bottom row.
             lines = [Text("  ") + ln for ln in sprite]
             lines[-1] = lines[-1] + t
-            return Group(*parts, *lines)
-        return Group(*parts, t) if parts else t
+            return Group(*parts, *lines, *tail)
+        return Group(*parts, t, *tail) if (parts or tail) else t
+
+
+SPONSOR_AFTER = 4          # seconds into a task before the sponsor line appears (quick replies never show it)
 
 
 THINK_LINES = 4

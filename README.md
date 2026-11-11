@@ -314,7 +314,7 @@ workers act out the same events. `/city calm` stills the motion, `/city off` hid
 <details>
 <summary><b>Sponsor line</b> — off unless a server is configured</summary>
 
-One optional line on the goodbye screen — this is how Forge stays free. It is never shown in
+One optional faint line under the working status, shown only after a task has run a few seconds — this is how Forge stays free. It is never shown in
 the first 7 days, in CI, for one-shot prompts, or when output is piped. The request carries only
 the Forge version, a random install id (`/ads reset` makes a new one) and which line was last
 shown — no prompts, code, file names or keys. It also counts the install as used that day,
