@@ -20,6 +20,11 @@ dependencies = [
 [project.scripts]
 forge = "forgecli.cli:main"
 
+[project.urls]
+Homepage = "https://forgecli.pages.dev"
+Source = "https://github.com/HSigei/forgeCLI"
+Issues = "https://github.com/HSigei/forgeCLI/issues"
+
 [tool.setuptools]
 packages = ["forgecli"]
 

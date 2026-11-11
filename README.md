@@ -14,6 +14,8 @@ providers as you like; when one is busy, the next one picks up the same conversa
 pipx install forgecommandline
 ```
 
+[**Website**](https://forgecli.pages.dev) · [Releases](https://github.com/HSigei/forgeCLI/releases/latest) · [Security](SECURITY.md)
+
 </div>
 
 ---
