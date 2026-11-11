@@ -5,13 +5,16 @@
   `/ads off`. Never in pipes, scripts, CI or `forge -p` runs, and not in the first week after install.
 - The request carries only Forge's version and a random install id (`/ads reset` makes a new one):
   no prompts, code, paths, keys or project details.
-- Fetched in the background with a 0.5 s timeout; slow or down server = no ad, never a slower reply.
+- Fetched in the background (2.5 s timeout) while you work; slow or down server = no ad, never a
+  slower reply. The next request says which ad was last shown, so sponsors are billed for real views.
+- In the quiet first week the same request goes out with quiet=1: it is only counted as "used today"
+  (the daily-users number) and never returns an ad.
 - Every ad is signed with Harry's Ed25519 key and rejected otherwise, so whoever takes over the
   server's address can't show their own lines. The text is reduced to plain printable words and one
   https link, so an ad can't clear the screen, move the cursor, fake a Forge message or hide its link.
 - An ad is display text only: it never reaches the model, a tool or the shell.
 
-`python -m forgecli.ads keygen` makes the key pair for the server (see server/ads-worker/README.md).
+`python -m forgecli.ads keygen` makes the key pair for the server (the server lives in the private forge-ads-server repo).
 """
 from __future__ import annotations
 
@@ -30,9 +33,10 @@ import urllib.request
 
 AD_SERVER = ""          # e.g. "https://ads.forge-cli.dev" once deployed
 AD_PUBLIC_KEY = ""      # hex Ed25519 public key printed by `python -m forgecli.ads keygen`
-TIMEOUT = 0.5
+TIMEOUT = 2.5
 QUIET_DAYS = 7
 MAX_TEXT, MAX_URL = 90, 100
+QUIET_WHY = f"first {QUIET_DAYS} days after install"
 
 
 def _home() -> pathlib.Path:
@@ -97,7 +101,7 @@ def allowed(st: dict | None = None, interactive: bool | None = None) -> tuple[bo
         return False, "not an interactive terminal"
     since = st.get("since") or time.time()
     if time.time() - since < QUIET_DAYS * 86400:
-        return False, f"first {QUIET_DAYS} days after install"
+        return False, QUIET_WHY
     return True, ""
 
 
@@ -240,7 +244,7 @@ def verify(pub: bytes, msg: bytes, sig: bytes) -> bool:
 
 
 def signed_message(ad: dict) -> bytes:
-    """Exactly what the server signs (server/ads-worker/worker.js builds the same string)."""
+    """Exactly what the server signs (forge-ads-server worker.js builds the same string)."""
     return "\n".join(str(ad.get(k, "")) for k in ("id", "text", "url", "exp")).encode("utf-8")
 
 
@@ -272,16 +276,28 @@ class Ads:
         self.ok, self.why = allowed(self.st, interactive)
         self.ad: dict | None = None
         self._thread: threading.Thread | None = None
-        if self.ok:
+        # Quiet first week: still say "used today" once a day (no ad comes back).
+        self.quiet = self.why == QUIET_WHY and self.st.get("pinged") != time.strftime("%Y-%m-%d")
+        if self.ok or self.quiet:
             self._thread = threading.Thread(target=self._fetch, daemon=True)
             self._thread.start()
 
     def _fetch(self) -> None:
-        q = urllib.parse.urlencode({"v": self.version, "id": self.st["id"]})
+        params = {"v": self.version, "id": self.st["id"]}
+        if self.st.get("seen"):
+            params["seen"] = self.st["seen"]
+        if not self.ok:
+            params["quiet"] = "1"
+        q = urllib.parse.urlencode(params)
         try:
             req = urllib.request.Request(f"{server()}/v1/ad?{q}", headers={"User-Agent": "forge-cli"})
             with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
                 data = json.loads(r.read(4096).decode("utf-8", "replace"))
+            self.st.pop("seen", None)
+            self.st["pinged"] = time.strftime("%Y-%m-%d")
+            save_state(self.st)
+            if not self.ok:
+                return
             ad = check(data) if isinstance(data, dict) and data.get("id") else None
             if ad:
                 self.st["cached"] = ad
@@ -301,6 +317,9 @@ class Ads:
             ad = check(cached) if isinstance(cached, dict) and cached.get("sig") else None
         if ad is None:
             return None
+        if ad["id"] and self.st.get("seen") != ad["id"]:
+            self.st["seen"] = ad["id"]      # reported with the next request, counted once per ad
+            save_state(self.st)
         return f"sponsor · {ad['text']}" + (f"  {ad['url']}" if ad["url"] else "")
 
 

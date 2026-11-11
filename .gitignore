@@ -15,3 +15,7 @@ Screenshot*.png
 # private working notes (kept locally, never published)
 HANDOFF.md
 MENTOR.md
+
+# the sponsor server lives in the private forge-ads-server repo
+server/
+docs/README.md

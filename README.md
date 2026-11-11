@@ -312,11 +312,13 @@ workers act out the same events. `/city calm` stills the motion, `/city off` hid
 <details>
 <summary><b>Sponsor line</b> — off unless a server is configured</summary>
 
-One optional line on the goodbye screen. It is never shown in the first 7 days, in CI, for
-one-shot prompts, or when output is piped. The request carries only the Forge version and a
-random install id (`/ads reset` makes a new one) — no prompts, code, file names or keys. Lines
-are signed by the server and stripped of escape codes. `/ads off` or `FORGE_ADS=0` turns it off;
-Forge works the same either way. The server is the Cloudflare Worker in `server/ads-worker/`.
+One optional line on the goodbye screen — this is how Forge stays free. It is never shown in
+the first 7 days, in CI, for one-shot prompts, or when output is piped. The request carries only
+the Forge version, a random install id (`/ads reset` makes a new one) and which line was last
+shown — no prompts, code, file names or keys. It also counts the install as used that day,
+including in the first week (no line is shown then). Lines are signed by the server and stripped
+of escape codes; links go through the server so clicks are counted. `/ads off` or `FORGE_ADS=0`
+turns all of it off; Forge works the same either way. Details in [PRIVACY.md](PRIVACY.md).
 </details>
 
 <details>

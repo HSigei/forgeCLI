@@ -92,7 +92,7 @@ copyright. You are responsible for checking it before use.
 ## 8. Sponsor lines
 
 Some versions of Forge may show at most one short sponsored line per day. Sponsored lines are
-provided by advertisers, are labelled, and are not endorsements by us. We are not responsible
+provided by advertisers, are labelled, and are not endorsements by us. Some lines come from ad networks we work with (currently Outrik). We are not responsible
 for any advertiser's products, websites or claims. Any dealings with an advertiser are solely
 between you and the advertiser.
 
