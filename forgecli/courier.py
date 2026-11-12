@@ -56,7 +56,7 @@ def pick_rows(term_h: int, term_w: int) -> int:
     env = os.environ.get("FORGE_COURIER_ROWS", "")
     if env.isdigit():
         return max(min(SIZES), min(max(SIZES), int(env)))
-    rows = 5 if term_h < 24 else 6 if term_h < 30 else 8 if term_h < 40 else 10 if term_h < 52 else 12
+    rows = min(SIZES) if term_h < 40 else max(min(SIZES), min(max(SIZES), term_h // 8))   # small: the chat matters more
     while rows > min(SIZES) and SIZES[rows][0] * 3 + 40 > term_w:   # lane plus the status text
         rows -= 1
     return rows

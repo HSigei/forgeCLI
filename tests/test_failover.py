@@ -1574,8 +1574,8 @@ components:
     assert "stale-skill" not in active_names and "active-skill" in active_names
     assert "stale-skill" in health_agent._execute(
         "find_skill", json.dumps({"query": "stale skill"}))
-    assert len(health_ui.infos) == 1
-    assert "health " in health_ui.infos[0] and "stale-skill" in health_ui.infos[0]
+    assert not health_ui.infos                     # no alarming start-up line any more
+    assert any("stale-skill" in r for r in health_agent.resting) and any("health " in r for r in health_agent.resting)
     print("ok  repeated failures demote keys/models; 30d-unused skills stay available via find_skill")
 
     # 48. Repo map is bounded, scoped and lists source definitions.

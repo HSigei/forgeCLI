@@ -59,14 +59,14 @@ def enabled() -> bool:
 
 
 def pick_rows(term_h: int, term_w: int) -> int:
-    """Biggest baked size that fits: about a quarter of the window's height, and the lane in its width."""
+    """Biggest baked size that fits: about an eighth of the window's height, and the lane in its width."""
     sizes = sorted(SIZES)
     want = os.environ.get("FORGE_COURIER_ROWS", "").strip()
     if want.isdigit():
         n = int(want)
         rows = max([s for s in sizes if s <= n] or [sizes[0]])
     else:
-        rows = max([s for s in sizes if s <= max(sizes[0], term_h // 4)] or [sizes[0]])
+        rows = max([s for s in sizes if s <= max(sizes[0], term_h // 8)] or [sizes[0]])
     while rows > sizes[0] and lane_cells(rows) + 4 > term_w:
         rows = max(s for s in sizes if s < rows)
     return rows

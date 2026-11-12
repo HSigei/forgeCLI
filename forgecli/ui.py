@@ -219,7 +219,7 @@ def logo(version: str, tagline: str, info: list[Text] | None = None, width: int 
     """The start-up header: the neon city banner, then the version line and the facts. With
     picture=False (a sixel image was already drawn above) only the text part."""
     width = width or console.width
-    line = Text(f"v{version}  ", style="ember").append(tagline, style="muted")
+    line = _gradient(f"forge v{version}", ACCENT, EMBER).append("  ").append(tagline, style="muted")
     if width < 60 or not picture:
         head = Group(*wordmark(a=ACCENT, b=EMBER), line) if (width < 60 and picture) else line
         return Group(head, Text(""), *(info or []))
@@ -232,7 +232,17 @@ def goodbye(lines: list[tuple[str, str]], animate: bool = True) -> None:
     from rich.align import Align
     from . import art as artmod
 
-    cub = Text.from_ansi(artmod.mascot(24).ansi().rstrip("\n"))
+    from . import banner3d
+    six = None
+    if console.is_terminal and artmod.graphics(console) == "sixel":
+        try:
+            six = banner3d.tiger_sixel()       # the same 3D cub as the start-up scene, real pixels
+        except Exception:
+            six = None
+    try:
+        cub = Text.from_ansi(banner3d.tiger_halfblock(12)) if not six else Text("")
+    except Exception:
+        cub = Text.from_ansi(artmod.mascot(24).ansi().rstrip("\n"))
 
     def frame(wave: str = "|") -> Group:
         art = cub
@@ -252,6 +262,12 @@ def goodbye(lines: list[tuple[str, str]], animate: bool = True) -> None:
                 time.sleep(0.22)
         except KeyboardInterrupt:
             pass
+    if six:
+        tw = banner3d._load()[0][0]
+        pad = max(0, (console.width - (tw + 9) // 10) // 2)
+        console.print()
+        sys.stdout.write(" " * pad + six + "\n")
+        sys.stdout.flush()
     console.print(frame("^"))
 
 
@@ -299,13 +315,14 @@ class _Live:
                 t.append("  ")
             except Exception:
                 t.append(self.SPIN[int(now * 8) % len(self.SPIN)] + " ", style=f"bold {PURPLES[1]}")
-        sweep = (now * 7) % (len(word) + 10) - 5
+        sweep = (now * 5) % (len(word) + 14) - 7
         for i, ch in enumerate(word):
-            base = _blend(PURPLES[0], PURPLES[1], i / max(1, len(word) - 1))
-            glow = max(0.0, 1 - abs(i - sweep) / 4)
-            t.append(ch, style=f"bold {_blend(base, PURPLES[2], glow * 0.85)}")
-        t.append(" ")
-        bits = [f"{secs:.0f}s"]
+            base = _blend(ACCENT, EMBER, i / max(1, len(word) - 1))
+            glow = max(0.0, 1 - abs(i - sweep) / 5)
+            t.append(ch, style=f"bold {_blend(base, PURPLES[2], glow * 0.55)}")
+        # A fixed-width slot for the word, so the numbers beside it don't hop sideways.
+        t.append(" " * max(1, 16 - len(word)))
+        bits = [f"{secs:>3.0f}s"]
         if u.tokens_hint:
             bits.append(u.tokens_hint)
         if u.model:
@@ -313,10 +330,16 @@ class _Live:
         stop = "esc to stop · type to add to the task" if self.docked else "ctrl+c to stop"
         t.append("  " + " · ".join(bits), style="muted").append("   " + stop, style="faint")
         parts = []
-        if u.trail:
+        if u.trail or self.docked:
             # The last few steps, so a fast run of reads is still readable.
             trail = Text()
-            for i, step in enumerate(u.trail[-TRAIL_LINES:]):
+            steps = u.trail[-TRAIL_LINES:]
+            if self.docked:
+                steps = [""] * (TRAIL_LINES - len(steps)) + steps
+            for i, step in enumerate(steps):
+                if not step:
+                    trail.append("\n" if i else "")
+                    continue
                 trail.append(("\n" if i else "") + "    ✓ ", style=f"{_blend(PURPLES[0], PURPLES[1], 0.4)}")
                 trail.append(step, style="faint")
             parts.append(trail)
@@ -324,16 +347,19 @@ class _Live:
         width = max(20, console.width - 8)
         if live.strip():
             # The reply as it is being written: the last few lines, under the status line.
-            parts.append(Text("\n".join("    " + ln for ln in _wrap(live, width)[-STREAM_LINES:]),
+            parts.append(Text("\n".join("    " + ln for ln in _pad(_wrap(live, width)[-(THINK_LINES if self.docked else STREAM_LINES):],
+                                                       THINK_LINES, self.docked)),
                               style="text"))
         else:
             thought = u.thinking or _think_part(u.streamed)
             if thought.strip():
                 # The model's reasoning as it happens. Display only: it is never added to the
                 # conversation, so it costs no context tokens.
-                lines = _wrap(thought, width)[-THINK_LINES:]
-                parts.append(Text("\n".join(("    ✻ " if i == 0 else "      ") + ln for i, ln in enumerate(lines)),
-                                  style="faint italic"))
+                lines = [("    ✻ " if i == 0 else "      ") + ln
+                         for i, ln in enumerate(_wrap(thought, width)[-THINK_LINES:])]
+                parts.append(Text("\n".join(_pad(lines, THINK_LINES, self.docked)), style="faint italic"))
+            elif self.docked:
+                parts.append(Text("\n" * (THINK_LINES - 1)))
         if not self.docked:
             # Not docked (rich draws this live): the city goes on top here too, if turned on.
             scene = u._scene_ansi(max(20, console.width))
@@ -349,6 +375,8 @@ class _Live:
                 line = None
             if line:
                 tail.append(Text("    " + line, style="faint", overflow="ellipsis", no_wrap=True))
+        if self.docked and not tail:
+            tail.append(Text(""))           # the sponsor's row stays reserved, so the courier never hops
         if sprite:
             # The courier stands on the status line: words sit beside his bottom row.
             lines = [Text("  ") + ln for ln in sprite]
@@ -363,6 +391,11 @@ SPONSOR_AFTER = 4          # seconds into a task before the sponsor line appears
 THINK_LINES = 4
 TRAIL_LINES = 3      # recent steps kept under the status line
 HOLD_SECS = 1.2      # each activity stays on screen at least this long, so it can be read
+
+
+def _pad(lines: list[str], n: int, on: bool) -> list[str]:
+    """Top-pad to n lines (when on), so a growing preview doesn't push the screen around."""
+    return [""] * (n - len(lines)) + lines if on and len(lines) < n else lines
 
 
 def _wrap(text: str, width: int) -> list[str]:

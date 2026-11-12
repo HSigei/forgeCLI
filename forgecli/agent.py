@@ -341,9 +341,9 @@ class Agent:
             last_active = row.get("last_used") or row.get("first_seen")
             if last_active and time.time() - float(last_active) >= 30 * 24 * 60 * 60:
                 demoted.append(f"skill {skill.name}")
-        if demoted:
-            self.ui.info("resting after repeated failures or 30d unused: " +
-                         ", ".join(demoted[:5]) + ("…" if len(demoted) > 5 else ""))
+        # Kept quiet: the router already skips these on its own, and a start-up line about
+        # "failures" only alarms people. /balance shows them for anyone curious.
+        self.resting = demoted
 
     def _schemas(self) -> list[dict]:
         active_skills = self._active_skills()

@@ -136,15 +136,22 @@ class App:
                              .append(f"  {sess.ago(last['updated'])} · ", style="faint")
                              .append("/resume", style="accent"))
         console.print()
-        # High-resolution banner: a real sixel picture where the terminal supports it (Windows
-        # Terminal 1.22+, WezTerm, foot, mlterm…); half-block pixels everywhere else.
-        sixel = uimod.banner_sixel(min(console.width - 4, 110)) if console.is_terminal else None
-        if sixel:
-            sys.stdout.write("  " + sixel + "\n")
-            sys.stdout.flush()
-        console.print(Panel(logo(__version__, "multi-model coding agent · failover · team mode", facts,
-                                 picture=not sixel),
-                            box=box.ROUNDED, border_style="#4a2a72", padding=(0, 2), expand=False))
+        # The scene (3D voxel tiger, 3D gradient FORGE, neon city) drawn straight on the terminal
+        # background, no box: real sixel pixels where the terminal can show them, half-blocks elsewhere.
+        if console.is_terminal and console.width >= 60 and os.environ.get("FORGE_BANNER", "on") != "off":
+            cols = min(console.width - 4, 110)
+            rows = 10 if console.height >= 34 else 7
+            try:
+                from . import art as artmod, banner3d
+                if artmod.graphics(console) == "sixel":
+                    sys.stdout.write("  " + banner3d.sixel(cols, rows) + chr(10))
+                    sys.stdout.flush()
+                else:
+                    console.print(Padding(Text.from_ansi(banner3d.halfblock(cols, rows)), (0, 0, 0, 2)))
+            except Exception:
+                pass
+        console.print(Padding(logo(__version__, "multi-model coding agent · failover · team mode", facts,
+                                   picture=False), (0, 0, 0, 2)))
         hint = Text("  ")
         for i, (key, what) in enumerate([("/help", "commands"), ("/model", "switch"), ("/balance", "limits"),
                                          ("ctrl+j", "new line"), ("esc", "stop")]):
@@ -742,6 +749,10 @@ class App:
             for ln in lines:
                 self.ui.info("  openrouter " + ln)
         self.ui.info("Most free providers don't publish a money balance; '—' means no reply from them yet.")
+        resting = getattr(self.agent, "resting", None)
+        if resting:
+            self.ui.info("Used last, after slow or failed replies (Forge tries them again on its own): " +
+                         ", ".join(resting[:6]) + ("…" if len(resting) > 6 else ""))
 
     def cmd_cost(self, _):
         self.ui.info(f"this session: {self.agent.used_in:,} input tokens · "
