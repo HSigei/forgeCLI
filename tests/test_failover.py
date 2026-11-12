@@ -2542,6 +2542,35 @@ components:
     assert Router.escalate(_R) == ""
     print("ok  edit misses show the closest text, stuck model handed on")
 
+    # The kvlite loop: slices of one unchanged file, pytest with extra cwd/cd, across 'continue'.
+    import json as _j, tempfile as _tf
+    def _c(name, **a):
+        return {"function": {"name": name, "arguments": _j.dumps(a)}}
+    with _tf.TemporaryDirectory() as d:
+        f = pathlib.Path(d, "protocol.py"); f.write_text("x = 1\n")
+        class _K:
+            _sig, _repeats, _failing = Agent._sig, Agent._repeats, Agent._failing
+            _FAILING, FAIL_NUDGE, FAIL_STOP = Agent._FAILING, Agent.FAIL_NUDGE, Agent.FAIL_STOP
+            REPEAT_NUDGE, REPEAT_STOP = Agent.REPEAT_NUDGE, Agent.REPEAT_STOP
+            tools = type("T", (), {"_path": staticmethod(pathlib.Path)})()
+        k = _K()
+        assert k._sig(_c("read_file", path=str(f), offset=1)) == k._sig(_c("read_file", path=str(f), offset=200))
+        assert (k._sig(_c("run_shell", command=f"cd {d} && pytest tests -v 2>&1", timeout=60))
+                == k._sig(_c("run_shell", command="pytest tests -v", cwd=d)))
+        k._repeats([_c("read_file", path=str(f))])
+        acts = [k._repeats([_c("read_file", path=str(f), offset=i)]) for i in range(5)]
+        assert "nudge" in acts and "stop" in acts, acts
+        f.write_text("x = 2\n")   # the file changed: reading it again is fine
+        k._repeat_steps = 0
+        assert k._repeats([_c("read_file", path=str(f))]) == ""
+        assert k._FAILING.search("==== 3 failed, 39 passed in 3.36s ====")
+        k._since_fail = 0
+        acts = [k._failing([_c("read_file", path="a")]) for _ in range(7)]
+        assert acts[3] == "nudge" and acts[6] == "stop", acts
+        k._failing([_c("edit_file", path="a")])
+        assert k._since_fail is None
+    print("ok  kvlite loop: slices, reworded test runs, failing tests with no fix")
+
     print("\nALL TESTS PASSED")
 
 

@@ -803,7 +803,8 @@ class Agent:
     def run_turn(self, user_text: str) -> None:
         # NEXT 7: a pasted API key is saved and replaced before it reaches a model or the session file.
         self.last_turn_ok = False
-        self._seen_calls, self._repeat_steps, self._edits, self._edit_misses = {}, 0, 0, 0
+        self._repeat_steps, self._edits, self._edit_misses, self._since_fail = 0, 0, 0, None
+        self.__dict__.setdefault("_seen_calls", {})
         user_text, pasted = keyvault.redact(user_text)
         if pasted:
             self.take_keys(pasted)
@@ -990,6 +991,43 @@ class Agent:
             return bool(cmd) and all(self._READ_SHELL.match(part) for part in re.split(r"[;|]|&&", cmd) if part.strip())
         return False
 
+    _FAILING = re.compile(r"\b\d+ failed\b|^FAILED |\bTests? failed\b|\bnpm ERR! Test failed", re.M | re.I)
+    FAIL_NUDGE, FAIL_STOP = 4, 7   # steps after a failing test run with no edit
+
+    def _sig(self, tc) -> str:
+        """What a call really does: read_file by file and its last change (slices of the same
+        unchanged file are the same read), run_shell by command without `cd X &&`, 2>&1, cwd or timeout."""
+        name = tc["function"]["name"]
+        raw = tc["function"].get("arguments") or ""
+        try:
+            args = json.loads(raw or "{}")
+        except Exception:
+            args = {}
+        if name == "read_file" and args.get("path"):
+            try:
+                full = getattr(self.tools, "_path", pathlib.Path)(args["path"])
+                stamp = os.path.getmtime(full)
+            except Exception:
+                full, stamp = args["path"], 0
+            return f"read\0{os.path.normcase(str(full))}\0{stamp}"
+        if name == "run_shell" and args.get("command"):
+            c = re.sub(r'^\s*cd\s+(?:"[^"]*"|\S+)\s*(?:&&|;)\s*', "", args["command"], flags=re.I)
+            c = re.sub(r"\s*2>&1\s*|\s*\|\s*(?:tail|head|select-object)\b.*$", " ", c, flags=re.I)
+            return "shell\0" + " ".join(c.lower().split())
+        return name + "\0" + raw
+
+    def _failing(self, calls) -> str:
+        """Tests failed and the model only looks around instead of fixing: nudge, then hand on."""
+        if any(tc["function"]["name"] in ("write_file", "edit_file") for tc in calls):
+            self._since_fail = None
+            return ""
+        if getattr(self, "_since_fail", None) is None:
+            return ""
+        self._since_fail += 1
+        if self._since_fail >= self.FAIL_STOP:
+            return "stop"
+        return "nudge" if self._since_fail == self.FAIL_NUDGE else ""
+
     def _repeats(self, calls) -> str:
         """Catch the model going round in circles: the same reads and the same test run again and
         again with nothing edited in between. Returns "", "nudge" or "stop"."""
@@ -999,7 +1037,7 @@ class Agent:
             seen.clear()
             self._repeat_steps = 0
             return ""
-        sigs = [tc["function"]["name"] + "\0" + (tc["function"].get("arguments") or "") for tc in calls]
+        sigs = [self._sig(tc) for tc in calls]
         again = bool(sigs) and all(seen.get(sg, 0) >= 1 for sg in sigs)
         for sg in sigs:
             seen[sg] = seen.get(sg, 0) + 1
@@ -1131,6 +1169,8 @@ class Agent:
                     result = self._execute(tc["function"]["name"], tc["function"]["arguments"])
                     self.messages.append({"role": "tool", "tool_call_id": tc["id"], "content": result})
                     done += 1
+                    if tc["function"]["name"] == "run_shell" and self._FAILING.search(str(result)):
+                        self._since_fail = 0
                     if tc["function"]["name"] == "edit_file" and str(result).startswith("Error: old_string not found"):
                         self._edit_misses = getattr(self, "_edit_misses", 0) + 1
                         if self._edit_misses == 3 and self._escalate("missing its edits"):
@@ -1160,8 +1200,24 @@ class Agent:
             broken = [m for m in self.messages[-len(r["tool_calls"]):] if m.get("role") == "tool" and
                       str(m.get("content", "")).startswith(("Error: unknown tool", "Error: bad arguments"))]
             qualitymod.record(r["provider"], r["model"], not broken)
+            fail = self._failing(r["tool_calls"] or [])
             rep = self._repeats(r["tool_calls"] or [])
             idle, action = (idle, "repeat-" + rep) if rep else self._stall(r["tool_calls"], idle)
+            if fail == "stop":
+                if self._escalate("not fixing the failing tests"):
+                    self._since_fail = 0
+                else:
+                    qualitymod.record(r["provider"], r["model"], False)
+                    self.ui.warn("Stopped: tests are failing and it kept looking instead of fixing them. "
+                                 "Say 'continue' to try again or name the fix.")
+                    self.last_turn_ok = False
+                    return
+            elif fail == "nudge":
+                self.ui.info("tests failing, no fix yet — telling the model to edit")
+                self.messages.append({"role": "user", "content": (
+                    "[Forge] The test run above has failures and you have not changed any file since. "
+                    "You already have the failing assertions and the code. Fix the code now with "
+                    "edit_file (one failure at a time) and rerun the tests. Do not change the tests.")})
             if action == "stop":
                 qualitymod.record(r["provider"], r["model"], False)
                 self.ui.warn(f"Stopped: {idle} steps in a row only read files without doing anything. "
@@ -1180,10 +1236,10 @@ class Agent:
             if action == "repeat-nudge":
                 self.ui.info("repeating the same steps — telling the model to act")
                 self.messages.append({"role": "user", "content": (
-                    "[Forge] You are repeating tool calls you already made, with the same arguments, and "
-                    "nothing has changed since: their results are above. Do not read those files or rerun "
-                    "that command again. Make the change now with edit_file / write_file, or reply with "
-                    "what is blocking you.")})
+                    "[Forge] You are repeating what you already did: those files have not changed since you "
+                    "read them (slices of the same file count) and that command already ran with nothing "
+                    "changed since. Their results are above. Do not read or rerun them. Make the change now "
+                    "with edit_file / write_file, or reply with what is blocking you.")})
             if action == "nudge":
                 self.ui.info(f"{idle} read-only steps in a row — telling the model to act")
                 self.messages.append({"role": "user", "content": (
