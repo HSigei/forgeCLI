@@ -14,7 +14,7 @@ providers as you like; when one is busy, the next one picks up the same conversa
 pipx install forgecommandline
 ```
 
-[**Website**](https://forgecli.pages.dev) · [Releases](https://github.com/HSigei/forgeCLI/releases/latest) · [Security](SECURITY.md)
+[**Website**](https://forgecli.pages.dev) · [Releases](https://github.com/HSigei/forgeCLI/releases/latest) · [Feedback](https://github.com/HSigei/forgeCLI/issues/new/choose) · [Discussions](https://github.com/HSigei/forgeCLI/discussions) · [Security](SECURITY.md)
 
 </div>
 
@@ -139,6 +139,7 @@ when the current one finishes. Images go only to a model that can see them.
 | `/status` · `/balance` · `/cost` · `/doctor` | keys and rests, limits left, money spent, health |
 | `/keys [add\|test\|remove]` · `/setup` | manage keys |
 | `/github login\|status\|logout` · `/review` | GitHub sign-in · review the current diff |
+| `/feedback` | report a bug or suggest an idea: opens a pre-filled GitHub issue with your version and OS (never the conversation) |
 | `/memory` · `/commands` · `/city` · `/ads` · `/update` · `/help` · `/exit` | |
 
 ---

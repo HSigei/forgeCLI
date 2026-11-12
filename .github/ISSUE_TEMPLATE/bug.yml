@@ -1,0 +1,38 @@
+name: Bug report
+description: Something in Forge broke or behaved wrongly
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: "Thanks for reporting. Please don't paste API keys or private code. Security problems go to SECURITY.md, not here."
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what Forge did instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      placeholder: "1. forge in a folder with …\n2. typed …\n3. saw …"
+  - type: textarea
+    id: output
+    attributes:
+      label: Error or output
+      description: Paste the error text or the end of the session (remove any keys).
+      render: text
+  - type: input
+    id: env
+    attributes:
+      label: Forge version, OS, Python
+      description: "`/feedback` in Forge fills this in for you."
+      placeholder: "Forge 0.8.1 · Windows 11 · Python 3.12"
+    validations:
+      required: true
+  - type: input
+    id: model
+    attributes:
+      label: Provider and model (if relevant)
+      placeholder: "groq · openai/gpt-oss-120b"

@@ -179,7 +179,7 @@ TEMPLATE = r"""<!doctype html>
   <a class="logo" href="./">FORGE</a>
   <span class="crumb">/ <b>docs</b> · v{{VER}}</span>
   <span class="sp"></span>
-  <nav><a href="./">Home</a><a href="https://github.com/HSigei/forgeCLI" target="_blank" rel="noopener">GitHub</a><a href="https://github.com/HSigei/forgeCLI/releases/latest" target="_blank" rel="noopener">Releases</a><a class="btn" href="./#install">Install</a></nav>
+  <nav><a href="./">Home</a><a href="https://github.com/HSigei/forgeCLI" target="_blank" rel="noopener">GitHub</a><a href="https://github.com/HSigei/forgeCLI/releases/latest" target="_blank" rel="noopener">Releases</a><a href="https://github.com/HSigei/forgeCLI/issues/new/choose" target="_blank" rel="noopener">Feedback</a><a class="btn" href="./#install">Install</a></nav>
 </header>
 
 <aside class="side" id="side">
@@ -196,7 +196,7 @@ TEMPLATE = r"""<!doctype html>
     <h1>Forge Docs</h1>
     <p class="intro">Everything about Forge: installing it, the commands at the prompt, how failover works, approvals, skills, team mode, the sandbox, GitHub, MCP servers, and every setting.</p>
 {{BODY}}
-    <p class="foot">© 2026 HK Labs · <a href="https://github.com/HSigei/forgeCLI/blob/main/LICENSE" target="_blank" rel="noopener">Apache-2.0</a> · <a href="https://github.com/HSigei/forgeCLI/blob/main/TERMS.md" target="_blank" rel="noopener">Terms</a> · <a href="https://github.com/HSigei/forgeCLI/blob/main/PRIVACY.md" target="_blank" rel="noopener">Privacy</a> · <a href="https://github.com/HSigei/forgeCLI/blob/main/DISCLAIMER.md" target="_blank" rel="noopener">Disclaimer</a> · <a href="https://github.com/HSigei/forgeCLI/edit/main/README.md" target="_blank" rel="noopener">Edit this page</a></p>
+    <p class="foot">© 2026 HK Labs · <a href="https://github.com/HSigei/forgeCLI/issues/new/choose" target="_blank" rel="noopener">Feedback</a> · <a href="https://github.com/HSigei/forgeCLI/blob/main/LICENSE" target="_blank" rel="noopener">Apache-2.0</a> · <a href="https://github.com/HSigei/forgeCLI/blob/main/TERMS.md" target="_blank" rel="noopener">Terms</a> · <a href="https://github.com/HSigei/forgeCLI/blob/main/PRIVACY.md" target="_blank" rel="noopener">Privacy</a> · <a href="https://github.com/HSigei/forgeCLI/blob/main/DISCLAIMER.md" target="_blank" rel="noopener">Disclaimer</a> · <a href="https://github.com/HSigei/forgeCLI/edit/main/README.md" target="_blank" rel="noopener">Edit this page</a></p>
   </div>
 </main>
 

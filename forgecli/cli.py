@@ -63,6 +63,7 @@ COMMANDS = {
     "/yes": "toggle auto-approve for everything",
     "/verbose": "toggle the key rotation / failover log",
     "/update": "check for a newer Forge and install it: /update · /update check",
+    "/feedback": "report a bug or suggest an idea: /feedback · /feedback idea · /feedback <what happened>",
     "/exit": "quit",
 }
 BOM = chr(0xFEFF)
@@ -72,7 +73,7 @@ APPROVAL_TEXT = {"smart": "smart — edits in this folder and safe commands just
 RELEASES = "https://github.com/HSigei/forgeCLI/releases/latest"
 
 ALIASES = {"/clear": "/new", "/quit": "/exit", "/q": "/exit", "/m": "/model", "/s": "/sessions",
-           "/r": "/resume", "/?": "/help"}
+           "/r": "/resume", "/?": "/help", "/bug": "/feedback"}
 
 SETUP = f"""No API keys configured.
 
@@ -753,6 +754,32 @@ class App:
             self.ui.info(f"money: about ${total:,.4f}" + (" plus models with unknown prices" if unknown else "") +
                          " (list prices, cached-input discounts not counted; free tiers cost $0; "
                          "your own prices go in ~/.forge/prices.json)")
+
+    def cmd_feedback(self, arg):
+        """Open a pre-filled GitHub issue. Only version, OS, Python and model go in — never the conversation."""
+        import platform
+        import urllib.parse
+        import webbrowser
+        words = arg.strip()
+        idea = words.lower() in ("idea", "feature", "suggest", "suggestion")
+        if idea:
+            q = {"template": "idea.yml", "env": __version__}
+        else:
+            try:
+                model = self.model_label()
+            except Exception:
+                model = ""
+            q = {"template": "bug.yml", "what": words,
+                 "env": f"Forge {__version__} · {platform.system()} {platform.release()} · Python {platform.python_version()}",
+                 "model": model}
+        url = "https://github.com/HSigei/forgeCLI/issues/new?" + urllib.parse.urlencode({k: v for k, v in q.items() if v})
+        try:
+            webbrowser.open(url)
+            self.ui.info("opened a new GitHub issue in your browser — version and OS are filled in, nothing from this conversation is sent")
+        except Exception:
+            pass
+        self.ui.info(f"if it didn't open: {url}")
+        self.ui.info("questions and general thoughts: https://github.com/HSigei/forgeCLI/discussions")
 
     def cmd_update(self, arg):
         """/update check: say whether a newer version exists. /update: install it. Returns False to quit."""
