@@ -803,7 +803,7 @@ class Agent:
     def run_turn(self, user_text: str) -> None:
         # NEXT 7: a pasted API key is saved and replaced before it reaches a model or the session file.
         self.last_turn_ok = False
-        self._seen_calls, self._repeat_steps = {}, 0
+        self._seen_calls, self._repeat_steps, self._edits, self._edit_misses = {}, 0, 0, 0
         user_text, pasted = keyvault.redact(user_text)
         if pasted:
             self.take_keys(pasted)
@@ -995,6 +995,7 @@ class Agent:
         again with nothing edited in between. Returns "", "nudge" or "stop"."""
         seen = self.__dict__.setdefault("_seen_calls", {})
         if any(tc["function"]["name"] in ("write_file", "edit_file") for tc in calls):
+            self._edits = getattr(self, "_edits", 0) + 1
             seen.clear()
             self._repeat_steps = 0
             return ""
@@ -1019,9 +1020,30 @@ class Agent:
             return idle, "stop"
         return idle, "nudge" if idle == self.STALL_NUDGE else ""
 
+    EXTRA_ROUNDS = 2   # step budgets added on top of max_steps while files are still changing
+
+    def _escalate(self, why: str) -> bool:
+        """Hand the task to a stronger model. True if one was available."""
+        who = getattr(self.router, "escalate", lambda: "")()
+        if who:
+            self.ui.info(f"{who} is {why} — handing the task to the next model")
+        return bool(who)
+
     def _loop(self) -> None:
         idle = 0
-        for _ in range(self.settings.max_steps):
+        budget, extra, edits_at = self.settings.max_steps, 0, 0
+        step = 0
+        while True:
+            if step >= budget:
+                made = getattr(self, "_edits", 0) - edits_at
+                if made and extra < self.EXTRA_ROUNDS:
+                    extra += 1
+                    edits_at = getattr(self, "_edits", 0)
+                    budget += self.settings.max_steps
+                    self.ui.info(f"still making progress ({made} edits) — carrying on")
+                else:
+                    break
+            step += 1
             if self.cancel is not None and self.cancel.is_set():
                 self.ui.warn("stopped")
                 return
@@ -1109,6 +1131,10 @@ class Agent:
                     result = self._execute(tc["function"]["name"], tc["function"]["arguments"])
                     self.messages.append({"role": "tool", "tool_call_id": tc["id"], "content": result})
                     done += 1
+                    if tc["function"]["name"] == "edit_file" and str(result).startswith("Error: old_string not found"):
+                        self._edit_misses = getattr(self, "_edit_misses", 0) + 1
+                        if self._edit_misses == 3 and self._escalate("missing its edits"):
+                            self._edit_misses = 0
                 self.ui.stop_spinner()
                 self.ui.flush()
                 for tc in r["tool_calls"][done:]:
@@ -1142,6 +1168,9 @@ class Agent:
                              "Say what to change, or 'continue' to let it keep looking.")
                 self.last_turn_ok = False
                 return
+            if action == "repeat-stop" and self._escalate("going round in circles"):
+                self._seen_calls, self._repeat_steps, idle = {}, 0, 0
+                action = ""
             if action == "repeat-stop":
                 qualitymod.record(r["provider"], r["model"], False)
                 self.ui.warn("Stopped: it kept repeating the same steps (same files, same commands) "
@@ -1167,4 +1196,4 @@ class Agent:
                     user_message["content"] += "\n\n" + parallel.coordinator_packet(
                         self, self._coordinator_handoff_reason)
                 self._coordinator_handoff_pending = False
-        self.ui.warn(f"Stopped after {self.settings.max_steps} tool steps. Say 'continue' to keep going.")
+        self.ui.warn(f"Stopped after {step} tool steps. Say 'continue' to keep going.")

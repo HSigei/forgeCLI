@@ -132,6 +132,29 @@ _PS_PIPES = [
 ]
 
 
+def _closest(text: str, old: str) -> str:
+    """The part of the file most like the text the model tried to replace, so the retry can copy
+    it exactly instead of guessing from a stale memory of the file (the kvlite edit loop)."""
+    lines, want = text.splitlines(), old.strip("\n").splitlines() or [old]
+    k = len(want)
+    if not lines:
+        return " The file is empty."
+    best, at = 0.0, 0
+    first = want[0].strip()
+    for i in range(max(1, len(lines) - k + 1)):
+        if first and difflib.SequenceMatcher(None, first, lines[i].strip()).quick_ratio() < 0.5:
+            continue
+        r = difflib.SequenceMatcher(None, "\n".join(want), "\n".join(lines[i:i + k])).ratio()
+        if r > best:
+            best, at = r, i
+    if best < 0.4:
+        return " Nothing in the file looks like it; read the file again before editing."
+    lo, hi = max(0, at - 2), min(len(lines), at + k + 2)
+    snippet = "\n".join(f"{j + 1:>5}  {lines[j]}" for j in range(lo, hi))
+    return (f" The file has changed since you read it. Closest match (lines {at + 1}-{at + k}), copy "
+            f"old_string from this exactly, without the line numbers:\n{snippet}")
+
+
 def bashism(cmd: str) -> str:
     """Bash syntax PowerShell can't run. Each one used to fail after an approval prompt
     (often a wrong "deletes files" warning, from words inside the inline script)."""
@@ -492,7 +515,7 @@ class Tools:
             return lazy
         n = text.count(old_string)
         if n == 0:
-            return "Error: old_string not found. Read the file and copy the text exactly."
+            return "Error: old_string not found." + _closest(text, old_string)
         if n > 1 and not replace_all:
             return f"Error: old_string occurs {n} times. Add surrounding context or set replace_all."
         new = text.replace(old_string, new_string) if replace_all else text.replace(old_string, new_string, 1)

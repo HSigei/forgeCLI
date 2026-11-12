@@ -612,6 +612,16 @@ class Router:
                                        self.speed(pm[0].name, pm[1]) if self.by_speed else 0))
         return pairs
 
+    def escalate(self, minutes: int = 20) -> str:
+        """The task's model is stuck (looping, failing edits): set it aside for a while so the next
+        request goes to the next best model, which gets the hand-off note. Returns who was dropped."""
+        if self.pinned or not self.sticky:
+            return ""
+        who = self.sticky
+        self.model_down[who] = time.time() + minutes * 60
+        self.log(f"{who[0]}:{who[1]} is stuck on this task, handing it to the next model")
+        return f"{who[0]} · {who[1]}"
+
     def new_turn(self) -> None:
         """Start of a user turn: keep the task's model unless a more capable one is usable again."""
         if not self.sticky or not self.by_quality:

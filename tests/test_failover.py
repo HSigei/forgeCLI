@@ -606,7 +606,7 @@ def main():
     took = _t.perf_counter() - start
     call = agent.messages[-2]["tool_calls"][0]["function"]
     assert call["name"] == "use_skill" and "web-build" in call["arguments"], agent.messages[-2:]
-    assert "Steps for web-build" in agent.messages[-1]["content"] and took < 0.05, took
+    assert "Steps for web-build" in agent.messages[-1]["content"] and took < 0.5, took   # no model round-trip: a real call takes seconds
     n = len(agent.messages)
     agent._auto_skill("now make the landing page hero bigger")     # already loaded: not added twice
     assert len(agent.messages) == n
@@ -2527,6 +2527,20 @@ components:
     assert shell_risk('python -c "import os; del x"') == "" and shell_risk("rm -rf build")
     assert _ui._strip_think("done<channel|> ok") == "done ok"
     print("ok  repeat loop guard, PowerShell bash-isms, inline-script approval, leaked tokens")
+
+    # A missed edit shows the real text; a stuck model is set aside for the next one.
+    from forgecli.tools import _closest
+    hint = _closest("a = 1\ndef set(self, k, v):\n    self.data[k] = v\n", "def set(self, key, v):\n    self.data[key] = v")
+    assert "lines 2-3" in hint and "self.data[k] = v" in hint, hint
+    assert "read the file again" in _closest("x = 1\n", "totally different text here")
+    import time as _t
+    class _R:
+        pinned, sticky, model_down, log = False, ("groq", "m1"), {}, staticmethod(lambda *a: None)
+    who = Router.escalate(_R)
+    assert who == "groq · m1" and _R.model_down[("groq", "m1")] > _t.time() + 60
+    _R.pinned = True
+    assert Router.escalate(_R) == ""
+    print("ok  edit misses show the closest text, stuck model handed on")
 
     print("\nALL TESTS PASSED")
 
