@@ -682,6 +682,9 @@ def main():
         args = json.dumps({"path": str(f)})
         assert "hello" in rt.execute("read_file", args)
         assert "Unchanged" in rt.execute("read_file", args)
+        rt.last_error = "TypeError: boom"
+        again = rt.execute("read_file", args)
+        assert again.startswith("Error: not read") and "TypeError: boom" in again, again
         for _ in range(7):
             rt.execute("list_dir", json.dumps({"path": d}))
         assert "hello" in rt.execute("read_file", args)
@@ -2570,6 +2573,33 @@ components:
         k._failing([_c("edit_file", path="a")])
         assert k._since_fail is None
     print("ok  kvlite loop: slices, reworded test runs, failing tests with no fix")
+
+    # 0.8.5: the error goes into the nudge, tests stay put while failing, repeat reads are refused.
+    tb = ('Traceback (most recent call last):\n  File "kv\\server.py", line 300, in handle_client\n'
+          '    x()\n  File "kv\\persistence.py", line 56, in write_increment\n    len(key)\n'
+          "TypeError: object of type 'RespBulkString' has no len()\n")
+    e = Agent._error_of(tb)
+    assert "persistence.py\", line 56" in e and "RespBulkString" in e, e
+    py = "tests\\test_kv.py:153: AssertionError\nE       AssertionError: assert -1 == -2\n==== 1 failed, 4 passed ===="
+    assert "assert -1 == -2" in Agent._error_of(py) and "test_kv.py:153" in Agent._error_of(py)
+    assert Agent._error_of("==== 42 passed in 3.1s ====") == ""
+    with _tf.TemporaryDirectory() as d:
+        t = pathlib.Path(d, "tests"); t.mkdir(); tf = t / "test_kv.py"; tf.write_text("def test(): pass\n")
+        class _G:
+            _test_guard, _TEST_FILE, _TEST_ASK = Agent._test_guard, Agent._TEST_FILE, Agent._TEST_ASK
+            tools = type("T", (), {"_path": staticmethod(pathlib.Path), "last_error": "assert -1 == -2"})()
+            messages = [{"role": "user", "content": "Build kvlite. Do not skip or weaken any test."}]
+            _tests_failing = True
+        g = _G()
+        blocked = g._test_guard("edit_file", _j.dumps({"path": str(tf)}))
+        assert blocked.startswith("Error: not changed") and "-1 == -2" in blocked, blocked
+        assert g._test_guard("edit_file", _j.dumps({"path": str(pathlib.Path(d, "store.py"))})) == ""
+        assert g._test_guard("write_file", _j.dumps({"path": str(t / "test_new.py")})) == ""
+        g.messages.append({"role": "user", "content": "the decr test is wrong, fix the test"})
+        assert g._test_guard("edit_file", _j.dumps({"path": str(tf)})) == ""
+        g.messages.pop(); g._tests_failing = False
+        assert g._test_guard("edit_file", _j.dumps({"path": str(tf)})) == ""
+    print("ok  error in the nudge, tests kept while failing, repeat read refused")
 
     print("\nALL TESTS PASSED")
 

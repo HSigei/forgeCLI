@@ -628,6 +628,10 @@ class Agent:
 
     # tools ------------------------------------------------------------------------
     def _execute(self, name: str, raw_args: str) -> str:
+        guarded = self._test_guard(name, raw_args)
+        if guarded:
+            self.ui.info("kept the tests as they are — the fix goes in the code")
+            return guarded
         if self.plan_mode and name not in READ_ONLY | {"find_skill", "use_skill"}:
             return f"Error: {name} is unavailable in read-only plan mode."
         if name == "ask_user":
@@ -804,6 +808,7 @@ class Agent:
         # NEXT 7: a pasted API key is saved and replaced before it reaches a model or the session file.
         self.last_turn_ok = False
         self._repeat_steps, self._edits, self._edit_misses, self._since_fail = 0, 0, 0, None
+        self.__dict__.setdefault("_tests_failing", False)
         self.__dict__.setdefault("_seen_calls", {})
         user_text, pasted = keyvault.redact(user_text)
         if pasted:
@@ -994,6 +999,10 @@ class Agent:
     _FAILING = re.compile(r"\b\d+ failed\b|^FAILED |\bTests? failed\b|\bnpm ERR! Test failed", re.M | re.I)
     FAIL_NUDGE, FAIL_STOP = 4, 7   # steps after a failing test run with no edit
 
+    def _fix_hint(self) -> str:
+        err = getattr(self.tools, "last_error", "")
+        return f" Start from this error, it is the thing to fix: {err}" if err else ""
+
     def _sig(self, tc) -> str:
         """What a call really does: read_file by file and its last change (slices of the same
         unchanged file are the same read), run_shell by command without `cd X &&`, 2>&1, cwd or timeout."""
@@ -1015,6 +1024,52 @@ class Agent:
             c = re.sub(r"\s*2>&1\s*|\s*\|\s*(?:tail|head|select-object)\b.*$", " ", c, flags=re.I)
             return "shell\0" + " ".join(c.lower().split())
         return name + "\0" + raw
+
+    _TEST_FILE = re.compile(r"(^|[\\/])(tests?|__tests__|spec)[\\/]|(^|[\\/])test_[^\\/]*$|"
+                            r"_test\.[a-z]+$|\.(test|spec)\.[a-z]+$", re.I)
+    _TEST_ASK = re.compile(r"\b(fix|change|update|edit|rewrite|adjust|correct|modify|loosen|relax)\b[^.\n]{0,40}"
+                           r"\btests?\b|\btests?\b[^.\n]{0,30}\b(is|are)\s+(wrong|broken|incorrect)", re.I)
+
+    @staticmethod
+    def _error_of(text: str) -> str:
+        """The line a fix starts from: the last traceback's deepest frame + the error, or the first
+        failing assertion. '' when the output shows no failure."""
+        text = str(text)
+        if "Traceback (most recent call last)" in text:
+            tb = text[text.rfind("Traceback (most recent call last)"):].splitlines()
+            frames = [l.strip() for l in tb if l.strip().startswith('File "')]
+            errs = [l.strip() for l in tb if re.match(r"\s*\w+(Error|Exception)\b", l)]
+            if errs:
+                return ((frames[-1] + " -> ") if frames else "") + errs[0][:300]
+        m = re.search(r"^E\s+(.+)$", text, re.M)
+        if m and Agent._FAILING.search(text):
+            where = re.search(r"^(\S+\.py:\d+): \w+", text, re.M)
+            return ((where.group(1) + " -> ") if where else "") + m.group(1)[:300]
+        return ""
+
+    def _test_guard(self, name: str, raw_args: str) -> str:
+        """Refuse edits to existing test files while tests fail, unless the user asked to change tests:
+        rewriting the failing test is how kvlite got to '42 passed' with a broken parser."""
+        if name not in ("edit_file", "write_file") or not getattr(self, "_tests_failing", False):
+            return ""
+        try:
+            path = str(json.loads(raw_args or "{}").get("path") or "")
+        except Exception:
+            return ""
+        if not path or not self._TEST_FILE.search(path.replace("\\", "/")):
+            return ""
+        try:
+            if not getattr(self.tools, "_path", pathlib.Path)(path).exists():
+                return ""   # a new test file is fine
+        except Exception:
+            return ""
+        asked = " ".join(str(m.get("content")) for m in self.messages
+                         if m.get("role") == "user" and not str(m.get("content", "")).startswith("[Forge]"))
+        if self._TEST_ASK.search(asked):
+            return ""
+        fix = f" The failure to fix: {self.tools.last_error}" if getattr(self.tools, "last_error", "") else ""
+        return ("Error: not changed. Tests are failing, and the fix belongs in the code, not in the test: "
+                "the user did not ask for tests to be changed. Edit the code under test instead." + fix)
 
     def _failing(self, calls) -> str:
         """Tests failed and the model only looks around instead of fixing: nudge, then hand on."""
@@ -1169,8 +1224,17 @@ class Agent:
                     result = self._execute(tc["function"]["name"], tc["function"]["arguments"])
                     self.messages.append({"role": "tool", "tool_call_id": tc["id"], "content": result})
                     done += 1
-                    if tc["function"]["name"] == "run_shell" and self._FAILING.search(str(result)):
-                        self._since_fail = 0
+                    if tc["function"]["name"] in ("run_shell", "process"):
+                        out = str(result)
+                        err = self._error_of(out)
+                        if err:
+                            self.tools.last_error = err
+                        if self._FAILING.search(out):
+                            self._since_fail, self._tests_failing = 0, True
+                        elif re.search(r"=+ .*\b\d+ passed\b.* =+|\bOK\b.*\(\d+ tests?\)", out):
+                            self._tests_failing = False
+                            if not err:
+                                self.tools.last_error = ""
                     if tc["function"]["name"] == "edit_file" and str(result).startswith("Error: old_string not found"):
                         self._edit_misses = getattr(self, "_edit_misses", 0) + 1
                         if self._edit_misses == 3 and self._escalate("missing its edits"):
@@ -1217,7 +1281,8 @@ class Agent:
                 self.messages.append({"role": "user", "content": (
                     "[Forge] The test run above has failures and you have not changed any file since. "
                     "You already have the failing assertions and the code. Fix the code now with "
-                    "edit_file (one failure at a time) and rerun the tests. Do not change the tests.")})
+                    "edit_file (one failure at a time) and rerun the tests. Do not change the tests."
+                    + self._fix_hint())})
             if action == "stop":
                 qualitymod.record(r["provider"], r["model"], False)
                 self.ui.warn(f"Stopped: {idle} steps in a row only read files without doing anything. "
@@ -1239,7 +1304,7 @@ class Agent:
                     "[Forge] You are repeating what you already did: those files have not changed since you "
                     "read them (slices of the same file count) and that command already ran with nothing "
                     "changed since. Their results are above. Do not read or rerun them. Make the change now "
-                    "with edit_file / write_file, or reply with what is blocking you.")})
+                    "with edit_file / write_file, or reply with what is blocking you." + self._fix_hint())})
             if action == "nudge":
                 self.ui.info(f"{idle} read-only steps in a row — telling the model to act")
                 self.messages.append({"role": "user", "content": (

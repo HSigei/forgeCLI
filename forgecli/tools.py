@@ -324,6 +324,8 @@ class Tools:
         self.hooks = Hooks(self.root, ui)
         self.always: set[str] = set()
         self.seen: dict[tuple, tuple] = {}   # (path, offset, limit) -> (mtime, call number)
+        self.stubbed: dict[str, float] = {}  # path -> mtime it was answered "unchanged" for
+        self.last_error = ""                 # the latest traceback / failure, set by the agent
         self.calls = 0                       # tool calls made, to tell recent reads from old ones
         self.recent_only = False             # set once history is being trimmed (see Agent._compact)
         # What this turn produced that the user would want to look at (Agent opens it when the turn ends).
@@ -450,8 +452,17 @@ class Tools:
         # Only point back to a copy the model can still see: once history is trimmed, that is just
         # the last few calls (Agent._compact always keeps them).
         if prev and prev[0] == mtime and (not self.recent_only or self.calls - prev[1] <= 6):
+            if self.stubbed.get(str(p)) == mtime:
+                # Already told it is unchanged, with the copy still in view, and asked again anyway
+                # (the kvlite loop): handing over the whole file again only fed the cycle. Once the
+                # copy is trimmed out of view a re-read is allowed again (that once deadlocked models).
+                fix = f" The error to fix: {self.last_error}" if self.last_error else ""
+                return ("Error: not read. You already have this file above and it has not changed since; "
+                        "reading it again will not help. Make the change with edit_file / write_file now." + fix)
+            self.stubbed[str(p)] = mtime
             return ("(Unchanged since you last read it in this conversation; use that copy instead of "
                     "reading it again.)")
+        self.stubbed.pop(str(p), None)
         self.seen[sig] = (mtime, self.calls)
         from . import attach
         what = attach.kind(p)
