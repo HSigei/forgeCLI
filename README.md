@@ -139,7 +139,7 @@ when the current one finishes. Images go only to a model that can see them.
 | `/status` · `/balance` · `/cost` · `/doctor` | keys and rests, limits left, money spent, health |
 | `/keys [add\|test\|remove]` · `/setup` | manage keys |
 | `/github login\|status\|logout` · `/review` | GitHub sign-in · review the current diff |
-| `/feedback` | report a bug or suggest an idea: opens a pre-filled GitHub issue with your version and OS (never the conversation) |
+| `/feedback` | report a bug or suggest an idea: opens a pre-filled GitHub issue with your version and OS (never the conversation). Forge mentions it at most once a fortnight after a finished task; `/feedback off` stops that |
 | `/memory` · `/commands` · `/city` · `/ads` · `/update` · `/help` · `/exit` | |
 
 ---

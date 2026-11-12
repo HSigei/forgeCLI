@@ -97,10 +97,14 @@ SCHEMAS = [
         {"items": {"type": "array", "items": {"type": "object", "properties": {
             "task": {"type": "string"}, "status": {"type": "string", "enum": ["todo", "doing", "done"]}},
             "required": ["task", "status"]}}}, ["items"]),
-    _fn("ask_user", "Ask the user a question when you need a decision only they can make. "
-        "Offer 2-4 short options when you can.",
-        {"question": {"type": "string"}, "options": {"type": "array", "items": {"type": "string"}}},
-        ["question"]),
+    _fn("ask_user", "Ask the user a question - rarely. Only when a wrong guess is costly or can't be "
+        "undone, or you need a fact only they know. Taste, wording, layout and tech choices are not "
+        "worth asking: decide and list the assumption. Offer 2-4 short options, best one first.",
+        {"question": {"type": "string"}, "options": {"type": "array", "items": {"type": "string"}},
+         "default": {"type": "string", "description": "What you will do if the user doesn't answer."},
+         "stakes": {"type": "string", "enum": ["irreversible", "costly_rework", "personal_fact", "preference"],
+                    "description": "Why asking beats guessing. 'preference' questions are answered with your default."}},
+        ["question", "default", "stakes"]),
     _fn("memory", "Read or save an explicit persistent note. Use project scope for this codebase and user "
         "scope for cross-project preferences. Save only useful facts the user wants remembered.",
         {"action": {"type": "string", "enum": ["read", "remember"]},

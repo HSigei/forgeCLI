@@ -63,7 +63,7 @@ COMMANDS = {
     "/yes": "toggle auto-approve for everything",
     "/verbose": "toggle the key rotation / failover log",
     "/update": "check for a newer Forge and install it: /update · /update check",
-    "/feedback": "report a bug or suggest an idea: /feedback · /feedback idea · /feedback <what happened>",
+    "/feedback": "report a bug or suggest an idea: /feedback · /feedback idea · /feedback <what happened> · /feedback off",
     "/exit": "quit",
 }
 BOM = chr(0xFEFF)
@@ -761,6 +761,12 @@ class App:
         import urllib.parse
         import webbrowser
         words = arg.strip()
+        if words.lower() in ("off", "on"):
+            self.prefs["feedback_nudge"] = words.lower() == "on"
+            save_prefs(self.prefs)
+            self.ui.info("feedback reminders " + ("on — at most once a fortnight" if words.lower() == "on" else
+                                                  "off — /feedback still works whenever you want it"))
+            return
         idea = words.lower() in ("idea", "feature", "suggest", "suggestion")
         if idea:
             q = {"template": "idea.yml", "env": __version__}
@@ -1118,16 +1124,45 @@ class App:
 
     def _guarded(self, fn, stopped: str) -> None:
         self.ui.act("queued")
+        before = len(getattr(self.agent, "messages", []) or [])
         try:
             fn()
             # the city acts out how the turn really ended
-            self.ui.act("completed" if getattr(self.agent, "last_turn_ok", True) else "failed")
+            ok = getattr(self.agent, "last_turn_ok", True)
+            self.ui.act("completed" if ok else "failed")
+            if ok:
+                self._maybe_ask_feedback(before)
         except KeyboardInterrupt:
             self.ui.act("cancelled")
             self.ui.pending = None
             self.ui.stop_spinner()
             self.ui.flush()
             self.ui.warn(stopped)
+
+    FEEDBACK_EVERY_DAYS = 14
+
+    def _maybe_ask_feedback(self, before: int) -> None:
+        """Now and then, after a real piece of work went well, one faint line inviting feedback.
+        Never a question, never blocking, never more than once a fortnight, and /feedback off stops it."""
+        import random
+        import time
+        try:
+            if os.environ.get("FORGE_FEEDBACK_NUDGE", "1") == "0" or self.prefs.get("feedback_nudge") is False:
+                return
+            steps = sum(1 for m in self.agent.messages[before:] if m.get("role") == "tool")
+            if steps < 4:                                   # a chat reply or a tiny edit: not "a part done"
+                return
+            done = int(self.prefs.get("tasks_done", 0)) + 1
+            self.prefs["tasks_done"] = done
+            last = float(self.prefs.get("feedback_asked", 0) or 0)
+            due = done >= 5 and time.time() - last > self.FEEDBACK_EVERY_DAYS * 86400 and random.random() < 0.3
+            if due:
+                self.prefs["feedback_asked"] = time.time()
+                self.ui.info("enjoying Forge, or did something annoy you? /feedback tells me in one line "
+                             "· /feedback off hides this")
+            save_prefs(self.prefs)
+        except Exception:
+            pass
 
     def _background(self, fn, stopped: str) -> None:
         try:
@@ -1251,7 +1286,17 @@ class App:
                     self.stop()
                 return self.goodbye()
             text = text.replace(BOM, "").strip()  # PowerShell pipes can prepend one
-            if self.ui.pending:          # Forge asked something: this is the answer
+            if self.ui.pending:          # Forge asked something: this is the answer…
+                word = text.split()[0].lower() if text.startswith("/") and not text.startswith("//") else ""
+                if word in ("/exit", "/quit", "/q"):          # …unless it's a way out
+                    self.stop()
+                    return self.goodbye()
+                if word in ("/stop", "/cancel"):
+                    self.stop()
+                    continue
+                if word:
+                    self.ui.info("Forge is waiting for your answer — type it, or /stop to cancel the task")
+                    continue
                 self.ui.answer(text)
                 continue
             if not text:

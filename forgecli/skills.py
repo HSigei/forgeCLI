@@ -42,7 +42,7 @@ MAX_BODY = 12_000   # characters of a skill sent at once (fits small free-tier l
 TOOL_MAP = ("Tool names in this skill are Claude Code's. In Forge use: Bash/PowerShell → run_shell, "
             "Read → read_file, Write → write_file, Edit/MultiEdit → edit_file, Grep → grep, "
             "Glob → glob, WebFetch → web_fetch, WebSearch → web_search, TodoWrite/TaskCreate → todo, "
-            "AskUserQuestion → ask_user, Skill → use_skill (find_skill to look one up), "
+            "AskUserQuestion → ask_user (only when Forge's ask rule allows it; otherwise take the recommended option), Skill → use_skill (find_skill to look one up), "
             "Agent/Task → delegate or run_parallel when enabled (otherwise do the steps yourself). "
             "For MCP connectors, call mcp_search and then use only the exact loaded mcp__… tool schema. "
             "For APIs, use http_request or import an OpenAPI spec; do not invent endpoints or parameters.")

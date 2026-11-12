@@ -821,6 +821,8 @@ class UI:
             ans = self._input(f"  [muted]Answer{hint}[/] [accent]›[/] ", f"Answer{hint}").strip()
         except (EOFError, KeyboardInterrupt):
             return ""
+        if ans.split()[:1] and ans.split()[0].lower() in ("/exit", "/quit", "/q", "/stop", "/cancel"):
+            raise KeyboardInterrupt      # a way out, not an answer: stop the task like ctrl+c
         if ans.isdigit() and 1 <= int(ans) <= len(options):
             return options[int(ans) - 1]
         return ans

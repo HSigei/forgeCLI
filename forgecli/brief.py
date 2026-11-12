@@ -16,7 +16,7 @@ import re
 
 ATTACH_MARK = "\n\n[Forge: the user attached"
 ANSWER_PREFIX = "The user answered: "
-MAX_QUESTIONS = 4          # ask_user calls per request before Forge says "build with what you have"
+MAX_QUESTIONS = 2          # ask_user calls per request before Forge says "build with what you have"
 
 _CONTINUE = re.compile(
     r"^\s*(?:ok(?:ay)?|yes|yep|yeah|sure|go|go on|go ahead|continue|keep going|carry on|proceed|resume|"
@@ -200,6 +200,50 @@ def build(messages: list[dict], todo: list[dict] | None = None) -> str:
         if done_items:
             lines.append("Plan, done: " + "; ".join(_clip(t, 60) for t in done_items[:10]))
     return "\n".join(lines)
+
+
+_JUST_DO_IT = re.compile(r"\b(?:just|simple|simply|quick(?:ly)?|basic|you decide|your call|"
+                         r"whatever you think|surprise me|don'?t ask|no questions)\b", re.I)
+WORTH_ASKING = {"irreversible", "costly_rework", "personal_fact"}
+
+
+def request_text(messages: list[dict]) -> str:
+    """The user's newest real request (not a continuation or a Forge note)."""
+    for m in reversed(messages):
+        if m.get("role") == "user":
+            text = own_text(m.get("content")).strip()
+            if text and not _is_forge(text) and not is_continuation(text):
+                return text
+    return ""
+
+
+def gate(messages: list[dict], args: dict) -> str | None:
+    """Decide whether an ask_user reaches the user. Returns the tool result to use instead, or None
+    to ask. Cheap-to-change questions are answered with the model's own default; the user only sees
+    questions where a wrong guess is costly, can't be undone, or needs a fact only they know."""
+    question = str(args.get("question", ""))
+    stakes = str(args.get("stakes", "")).strip().lower()
+    default = str(args.get("default", "")).strip()
+    request = request_text(messages)
+    from .agent import wants_questions          # late import: agent imports brief
+    invited = wants_questions(request)
+    use_default = (f" Go with your default ({_clip(default, 100)!r})" if default else
+                   " Pick the most sensible default yourself")
+    if not invited and stakes != "irreversible" and _JUST_DO_IT.search(request):
+        return ("Not asked: the user said to just do it." + use_default +
+                ", keep working, and list this assumption at the end of your reply.")
+    if not invited and stakes not in WORTH_ASKING:
+        return ("Not asked: this is cheap to change later, so it isn't worth interrupting the user." +
+                use_default + ", keep working, and list this assumption at the end of your reply.")
+    return reuse(messages, question)
+
+
+def gate_label(result: str) -> str:
+    if result.startswith("Already"):
+        return "already answered — reusing the user's answer"
+    if result.startswith("Not asked"):
+        return "decided myself instead of asking — assumptions listed at the end"
+    return "enough questions — building now"
 
 
 def reuse(messages: list[dict], question: str) -> str | None:

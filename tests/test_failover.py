@@ -2296,7 +2296,21 @@ components:
               "a dark theme, a date filter, a chart of the last 30 days and an export button for the accountant"]:
         assert not _vague_build(t), t
     assert _INTERVIEW_NOTE.startswith("\n\n[Forge:") and "ask_user" in _INTERVIEW_NOTE
-    print("ok  vague build requests interview the user first")
+    print("ok  vague build requests are recognised")
+
+    # Test 59b: asking is opt-in — cheap questions get the model's own default, exits are never answers.
+    from forgecli import brief as _b
+    from forgecli.agent import _DEFAULTS_NOTE, wants_questions
+    def _u(t): return [{"role": "user", "content": t}]
+    assert not wants_questions("just build me a simple landing page") and wants_questions("help me plan it, ask me")
+    assert _b.gate(_u("build me a landing page"), {"question": "Colours?", "default": "dark", "stakes": "preference"}).startswith("Not asked")
+    assert _b.gate(_u("build me a landing page"), {"question": "For what?"}).startswith("Not asked")        # no stakes given
+    assert _b.gate(_u("just make a simple page"), {"question": "Who for?", "stakes": "costly_rework"}).startswith("Not asked")
+    assert _b.gate(_u("tidy my folder"), {"question": "Delete 40 files?", "default": "no", "stakes": "irreversible"}) is None
+    assert _b.gate(_u("deploy it"), {"question": "Account id?", "stakes": "personal_fact"}) is None
+    assert _b.gate(_u("interview me about the page"), {"question": "Colours?", "stakes": "preference"}) is None
+    assert "without asking" in _DEFAULTS_NOTE
+    print("ok  only costly, irreversible or personal questions reach the user")
 
 
     # Test 60: sponsor lines — off switches, escape-code cleaning, signatures that can't be forged.
