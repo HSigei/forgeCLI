@@ -340,6 +340,23 @@ def _stem(w: str) -> str:
     return w
 
 
+_URL = re.compile(r"\b(?:https?://|www\.)\S+", re.I)
+_PATH = re.compile(r"(?:\b[a-z]:[\\/]|~[\\/]|(?<!\w)\.{0,2}/)[^\s\"']*|\b[\w.-]+\.(?:png|jpe?g|gif|webp|svg|"
+                   r"pdf|docx?|xlsx?|pptx?|csv|txt|md|html?|css|js|ts|py|json|zip)\b", re.I)
+
+
+def _keep_ext(m: re.Match) -> str:
+    ext = re.search(r"\.([a-z0-9]{2,5})$", m.group(0), re.I)
+    return f" {ext.group(1)} " if ext else " "
+
+
+def request_words(text: str) -> str:
+    """What the user asked, without links and file paths: their words ("Users", "Downloads", "co")
+    say nothing about the task and used to pull in unrelated skills. A file's type (pdf, xlsx)
+    does, so it stays."""
+    return _PATH.sub(_keep_ext, _URL.sub(" ", text or ""))
+
+
 def _terms(text: str) -> list[str]:
     return [_stem(w) for w in re.findall(r"[a-z0-9]+", text.lower()) if len(w) > 1 and w not in _STOP]
 
@@ -375,7 +392,7 @@ class Matcher:
         self.min_score = self.MIN_SCORE * min(1.0, math.log(1 + n) / math.log(201))
 
     def scores(self, text: str) -> list[tuple[float, "Skill"]]:
-        q = set(_terms(text))
+        q = set(_terms(request_words(text)))
         out = []
         for s, tf, length in self.docs:
             sc = 0.0
@@ -393,7 +410,7 @@ class Matcher:
         return out
 
     def match(self, text: str) -> tuple["Skill | None", float]:
-        if len(text) < 12 or text.lstrip().startswith("/"):
+        if len(request_words(text).strip()) < 12 or text.lstrip().startswith("/"):
             return None, 0.0
         ranked = self.scores(text)
         if not ranked:

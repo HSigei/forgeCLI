@@ -62,9 +62,14 @@ def policy_denial(tool: str, command: str = "") -> str:
 
 
 def shell_risk(command: str) -> str:
-    """'' if the command looks safe, otherwise a short reason it needs approval."""
+    """'' if the command looks safe, otherwise a short reason it needs approval.
+    Text inside an inline script (python -c "...") is code, not shell words: `del x` or
+    `os.rename` there used to raise a false "deletes files" prompt."""
+    probe = command
+    if re.search(r"\b(python|py|node)(\.exe)?\s+-(c|e)\s", command, re.I):
+        probe = re.sub(r'"(?:[^"\\]|\\.)*"' + "|'[^']*'", '""', command)
     for rx, why in _RISKY:
-        if rx.search(command):
+        if rx.search(probe):
             return why
     return ""
 

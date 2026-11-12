@@ -19,3 +19,4 @@ MENTOR.md
 # the sponsor server lives in the private forge-ads-server repo
 server/
 docs/README.md
+.wrangler/

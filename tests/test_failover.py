@@ -581,10 +581,11 @@ def main():
     finally:
         uimod.console.input = real_input
     __import__("os").environ["FORGE_BYE_ANIMATION"] = "0"
+    app.agent.session.messages.append({"role": "user", "content": "hi"})
     with uimod.console.capture() as cap:
         assert app.handle("/exit") is False and app.goodbye() == 0
-    assert "see you soon" in cap.get()
-    print("ok  resume picker chooses a saved conversation; exit shows the goodbye screen")
+    assert cap.get().strip() == f"forge -r {app.agent.session.id}"     # only the exact resume command
+    print("ok  resume picker chooses a saved conversation; exit leaves only the resume command")
 
     # 26. The skill a request needs is found locally and loaded without a model call.
     import time as _t
@@ -2461,6 +2462,71 @@ components:
         else:
             _os.environ["FORGE_HOME"] = _fh
     print("ok  browser_check screenshots stay out of the project")
+
+    # A follow-up stays on the latest work; links are resources; paths don't pick skills.
+    from forgecli import attach as _at, brief as _br, skills as _sk
+    _w = lambda i, p: {"role": "assistant", "content": "", "tool_calls": [  # noqa: E731
+        {"id": i, "function": {"name": "write_file", "arguments": json.dumps({"path": p, "content": "x"})}}]}
+    _req = r"C:\Users\Harry\Downloads\greeter-tiger.png this should be the logo and add https://shadergradient.co/"
+    _m = _at.user_message(_req)
+    assert "the user gave a link: https://shadergradient.co/" in _m["content"]
+    assert "Don't just paste the URL" in _m["content"] and _br.own_text(_m["content"]) == _req
+    _convo = [{"role": "user", "content": "build me a simple styled calculator like the ios one"},
+              _w("1", "ios-calculator.html"),
+              {"role": "user", "content": "build a website instead not a calculator"},
+              _w("2", "website/index.html"), _m]
+    assert _br.recent_files(_convo) == ["website/index.html"]
+    _pin = _br.build(_convo)
+    assert "Latest work (newest first): website/index.html." in _pin and "never go back to it" in _pin
+    _words = _sk.request_words(_req)
+    assert "Users" not in _words and "shadergradient" not in _words and "png" in _words
+    assert "pdf" in _sk.request_words("summarize ./docs/report.pdf for me")
+    print("ok  follow-ups stay on the latest work, links are resources, paths don't pick skills")
+
+    # The start screen: tiger left, FORGE + arrow details right, city behind; small windows fall back.
+    import io as _io
+    from rich.console import Console as _C
+    from rich.text import Text as _T
+    from forgecli import splash as _sp
+    _lines = [_T("v0"), *[_T(_sp.ARROW + f"model     some/model-{i}") for i in range(5)], _T("/help commands")]
+    for _wd in (90, 128, 200):
+        _buf = _io.StringIO()
+        _con = _C(file=_buf, width=_wd, force_terminal=True, color_system="truecolor")
+        assert _sp.render(_con, _lines), _wd
+        _rows = _buf.getvalue().rstrip(chr(10)).split(chr(10))
+        assert any("model-4" in _T.from_ansi(r).plain for r in _rows)
+        assert all(_T.from_ansi(r).cell_len <= _wd for r in _rows), _wd
+    assert not _sp.render(_C(file=_io.StringIO(), width=60, force_terminal=True), _lines)
+    print("ok  start screen: tiger, FORGE and arrow details over the city; tiny windows fall back")
+
+    # Loading screen, sponsor line and the HD start picture.
+    from forgecli import loader as loadmod, splash as splmod, splash_hd as hdmod, ui as uimod2
+    fr = loadmod.frame(1.0, 80, 24)
+    assert "\n" not in fr and "█" in fr and "S C A L E" in fr      # rows placed by cursor moves only
+    st = uimod2.sponsor_text("sponsor · Ship faster  https://example.com")
+    assert "sponsored" in st.plain and st.plain.endswith("https://example.com") and st.no_wrap
+    Lh = splmod.layout(90, 8, 60)
+    pic = hdmod.draw(Lh, (Lh["rx"] - 2, 5, 80, 14))
+    assert (pic.w, pic.h) == (Lh["w"] * 10, Lh["h"] * 20)
+    print("ok  loading screen, sponsor tag and the sharp start picture")
+
+    # The kvlite session: same reads and test runs over and over, bash syntax in PowerShell,
+    # a false "deletes files" prompt on an inline script, and a leaked <channel|> token.
+    from forgecli.agent import Agent as _Ag
+    from forgecli.tools import bashism
+    from forgecli.safety import shell_risk
+    from forgecli import ui as _ui
+    ag = _Ag.__new__(_Ag)
+    rd = [{"function": {"name": "run_shell", "arguments": '{"command": "cat store.py"}'}}]
+    acts = [ag._repeats(rd) for _ in range(5)]
+    assert acts[2] == "nudge" and acts[4] == "stop", acts
+    ag._repeats([{"function": {"name": "edit_file", "arguments": "{}"}}])
+    assert ag._repeats(rd) == "", "an edit resets the repeat count"
+    assert _Ag._readish(ag, rd[0]) and not _Ag._readish(ag, {"function": {"name": "run_shell", "arguments": '{"command": "pytest"}'}})
+    assert bashism("python << 'EOF'" + chr(10) + "print(1)" + chr(10) + "EOF") and bashism("mkdir -p a/{x,y}") and not bashism("git status")
+    assert shell_risk('python -c "import os; del x"') == "" and shell_risk("rm -rf build")
+    assert _ui._strip_think("done<channel|> ok") == "done ok"
+    print("ok  repeat loop guard, PowerShell bash-isms, inline-script approval, leaked tokens")
 
     print("\nALL TESTS PASSED")
 

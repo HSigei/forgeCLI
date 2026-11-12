@@ -132,6 +132,18 @@ _PS_PIPES = [
 ]
 
 
+def bashism(cmd: str) -> str:
+    """Bash syntax PowerShell can't run. Each one used to fail after an approval prompt
+    (often a wrong "deletes files" warning, from words inside the inline script)."""
+    if re.search(r"<<-?\s*['\"]?\w+", cmd):
+        return "heredocs (`<< EOF`) don't exist in it."
+    if re.search(r"\{[^{}\s]+,[^{}\s]+\}", cmd) and re.search(r"\b(mkdir|touch|cp|mv)\b", cmd):
+        return "brace expansion (`{a,b}`) doesn't exist in it; create each folder separately."
+    if "\n" in cmd.strip() and re.search(r"\b(python|py|node)(\.exe)?\s+-(c|e)\s+[\"']", cmd):
+        return "a multi-line inline script breaks its quoting."
+    return ""
+
+
 def unixy_to_powershell(cmd: str) -> str:
     """Models often write Linux pipes; rewrite the common ones so they work in PowerShell."""
     for pat, rep in _PS_PIPES:
@@ -926,6 +938,10 @@ class Tools:
             if problem:
                 return "Error: FORGE_SANDBOX=docker is on but " + problem
         elif "powershell" in self.shell.lower() or "pwsh" in self.shell.lower():
+            bad = bashism(command)
+            if bad:
+                return ("Error: not run. This shell is Windows PowerShell, and " + bad + " To create or "
+                        "change a file use write_file / edit_file, then run it (e.g. `python script.py`).")
             command = unixy_to_powershell(command)
         command = local_only_server(command)
         from . import github

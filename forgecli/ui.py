@@ -374,18 +374,39 @@ class _Live:
             except Exception:
                 line = None
             if line:
-                tail.append(Text("    " + line, style="faint", overflow="ellipsis", no_wrap=True))
+                tail.append(sponsor_text(line))
         if self.docked and not tail:
             tail.append(Text(""))           # the sponsor's row stays reserved, so the courier never hops
         if sprite:
             # The courier stands on the status line: words sit beside his bottom row.
             lines = [Text("  ") + ln for ln in sprite]
             lines[-1] = lines[-1] + t
+            lines[-1].no_wrap, lines[-1].overflow = True, "ellipsis"
             return Group(*parts, *lines, *tail)
+        # One row, always: a status line that wraps would add a row the height budget never counted.
+        t.no_wrap, t.overflow = True, "ellipsis"
         return Group(*parts, t, *tail) if (parts or tail) else t
 
 
-SPONSOR_AFTER = 4          # seconds into a task before the sponsor line appears (quick replies never show it)
+SPONSOR_AFTER = 2          # seconds into a task before the sponsor line appears (instant replies never show it)
+
+
+def sponsor_text(line: str) -> Text:
+    """The sponsor line: a small violet "sponsored" tag, the message in soft pink and the link in
+    cyan. Easy to spot under the status, never brighter than Forge's own words. One row."""
+    body = line.removeprefix("sponsor · ")
+    url = ""
+    if "  " in body:
+        body, url = body.rsplit("  ", 1)
+        if not url.startswith(("http://", "https://", "www.")):
+            body, url = body + "  " + url, ""
+    t = Text("    ")
+    t.append(" sponsored ", style="bold #f5d0fe on #4c1d95")
+    t.append("  " + body, style="#f9a8d4")
+    if url:
+        t.append("  " + url, style="underline #67e8f9")
+    t.no_wrap, t.overflow = True, "ellipsis"
+    return t
 
 
 THINK_LINES = 4
@@ -399,14 +420,22 @@ def _pad(lines: list[str], n: int, on: bool) -> list[str]:
 
 
 def _wrap(text: str, width: int) -> list[str]:
+    """Hard-wrap by terminal cells (wide characters and emoji count double), so no preview line is
+    wider than the window and the terminal never wraps it into an extra, uncounted row."""
+    from rich.cells import chop_cells
     lines: list[str] = []
-    for para in text.rstrip().split("\n"):
-        lines += [para[i:i + width] for i in range(0, max(1, len(para)), width)]
+    for para in text.rstrip().expandtabs(4).split("\n"):
+        lines += chop_cells(para, width) if para else [""]
     return lines
 
 
+_TEMPLATE_TOKEN = re.compile(r"<\|?[a-z_]{2,20}\|>")
+
+
 def _strip_think(text: str) -> str:
-    """Reply text without a <think>…</think> block (some models put their reasoning there)."""
+    """Reply text without a <think>…</think> block (some models put their reasoning there),
+    and without stray chat-template tokens like <channel|> or <|end|> that leak into replies."""
+    text = _TEMPLATE_TOKEN.sub("", text)
     if "<think>" not in text:
         return text
     head, _, rest = text.partition("<think>")
@@ -499,11 +528,25 @@ class UI:
             return ""
 
     # docked mode ------------------------------------------------------------------
+    input_rows = 1          # lines in the message box right now (the prompt sets it each redraw)
+
+    def status_budget(self) -> int:
+        """Rows the live status may use: the window minus the message box, the completion menu's
+        six reserved rows, the box's top edge, the footer and one spare row."""
+        try:
+            height = console.size.height
+        except Exception:
+            height = 40
+        return max(0, height - self.input_rows - 6 - 1 - 1 - 1)
+
     def status_ansi(self) -> str:
         """The live status (spinner, activity, reasoning or reply preview) as ANSI text, for the
         area above the message box. Empty when Forge is idle."""
         width = max(20, console.width)
         scene = self._scene_ansi(width)
+        budget = self.status_budget()
+        if scene.count(chr(10)) > budget:
+            scene = ""
         if not self.busy:
             self.hd_lane = None
             return scene
@@ -519,6 +562,16 @@ class UI:
         buf.truncate()
         c.print(_Live(self, spinner=True))
         out = scene + buf.getvalue()
+        # Height budget. prompt_toolkit draws this status, the message box and the footer as one
+        # block at the bottom of the window. If that block is taller than the window, the box and
+        # footer are pushed off screen and later output lands on top of them, so the status never
+        # takes more rows than the box, its completion menu and the footer leave free.
+        if out.count(chr(10)) > budget and scene:          # the city goes first…
+            out = buf.getvalue()
+        if out.count(chr(10)) > budget:                    # …then the oldest status rows
+            self._hd_rows = 0                              # no room for the pixel courier either
+            lines = out.split(chr(10))[:-1] if out.endswith(chr(10)) else out.split(chr(10))
+            out = "".join(ln + chr(10) for ln in (lines[-budget:] if budget > 0 else []))
         rows = getattr(self, "_hd_rows", 0)
         # Where the courier's blank rows sit inside the prompt's message (they end the status).
         self.hd_lane = (out.count(chr(10)) - rows, rows, 2) if rows else None

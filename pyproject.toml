@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "forgecommandline"
-version = "0.8.1"
+version = "0.8.2"
 description = "A terminal coding agent with provider failover"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -29,7 +29,7 @@ Issues = "https://github.com/HSigei/forgeCLI/issues"
 packages = ["forgecli"]
 
 [tool.setuptools.package-data]
-forgecli = ["courier_hd_data.bin", "scene_data.bin"]
+forgecli = ["courier_hd_data.bin", "scene_data.bin", "tiger_data.bin", "cub_data.bin"]
 
 [tool.setuptools.data-files]
 "skills/commit" = ["skills/commit/SKILL.md"]

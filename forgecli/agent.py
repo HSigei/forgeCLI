@@ -803,6 +803,7 @@ class Agent:
     def run_turn(self, user_text: str) -> None:
         # NEXT 7: a pasted API key is saved and replaced before it reaches a model or the session file.
         self.last_turn_ok = False
+        self._seen_calls, self._repeat_steps = {}, 0
         user_text, pasted = keyvault.redact(user_text)
         if pasted:
             self.take_keys(pasted)
@@ -971,10 +972,47 @@ class Agent:
     STALL_NUDGE = 10   # read-only steps in a row before the model is told to act
     STALL_STOP = 18    # ... and before the turn is stopped
 
+    # Shell commands that only look at files count as reading (`cat a.py` is a read_file).
+    _READ_SHELL = re.compile(r"^\s*(cat|type|get-content|gc|head|tail|ls|dir|get-childitem|gci|"
+                             r"findstr|select-string|grep|wc|tree|pwd|echo)\b", re.I)
+    REPEAT_NUDGE = 2   # steps that only repeat calls already made (same tool, same arguments)
+    REPEAT_STOP = 4
+
+    def _readish(self, tc) -> bool:
+        name = tc["function"]["name"]
+        if name in READ_ONLY:
+            return True
+        if name == "run_shell":
+            try:
+                cmd = json.loads(tc["function"].get("arguments") or "{}").get("command", "")
+            except Exception:
+                return False
+            return bool(cmd) and all(self._READ_SHELL.match(part) for part in re.split(r"[;|]|&&", cmd) if part.strip())
+        return False
+
+    def _repeats(self, calls) -> str:
+        """Catch the model going round in circles: the same reads and the same test run again and
+        again with nothing edited in between. Returns "", "nudge" or "stop"."""
+        seen = self.__dict__.setdefault("_seen_calls", {})
+        if any(tc["function"]["name"] in ("write_file", "edit_file") for tc in calls):
+            seen.clear()
+            self._repeat_steps = 0
+            return ""
+        sigs = [tc["function"]["name"] + "\0" + (tc["function"].get("arguments") or "") for tc in calls]
+        again = bool(sigs) and all(seen.get(sg, 0) >= 1 for sg in sigs)
+        for sg in sigs:
+            seen[sg] = seen.get(sg, 0) + 1
+        if not again:
+            return ""
+        self._repeat_steps = getattr(self, "_repeat_steps", 0) + 1
+        if self._repeat_steps >= self.REPEAT_STOP:
+            return "stop"
+        return "nudge" if self._repeat_steps == self.REPEAT_NUDGE else ""
+
     def _stall(self, calls, idle: int) -> tuple[int, str]:
         """Count model steps in a row that only read/list/search. Returns (new count, action):
         "" carry on, "nudge" tell the model to stop exploring, "stop" end the turn."""
-        if not calls or any(tc["function"]["name"] not in READ_ONLY for tc in calls):
+        if not calls or not all(Agent._readish(self, tc) for tc in calls):
             return 0, ""
         idle += 1
         if idle >= self.STALL_STOP:
@@ -1096,13 +1134,27 @@ class Agent:
             broken = [m for m in self.messages[-len(r["tool_calls"]):] if m.get("role") == "tool" and
                       str(m.get("content", "")).startswith(("Error: unknown tool", "Error: bad arguments"))]
             qualitymod.record(r["provider"], r["model"], not broken)
-            idle, action = self._stall(r["tool_calls"], idle)
+            rep = self._repeats(r["tool_calls"] or [])
+            idle, action = (idle, "repeat-" + rep) if rep else self._stall(r["tool_calls"], idle)
             if action == "stop":
                 qualitymod.record(r["provider"], r["model"], False)
                 self.ui.warn(f"Stopped: {idle} steps in a row only read files without doing anything. "
                              "Say what to change, or 'continue' to let it keep looking.")
                 self.last_turn_ok = False
                 return
+            if action == "repeat-stop":
+                qualitymod.record(r["provider"], r["model"], False)
+                self.ui.warn("Stopped: it kept repeating the same steps (same files, same commands) "
+                             "without changing anything. Say what to do next.")
+                self.last_turn_ok = False
+                return
+            if action == "repeat-nudge":
+                self.ui.info("repeating the same steps — telling the model to act")
+                self.messages.append({"role": "user", "content": (
+                    "[Forge] You are repeating tool calls you already made, with the same arguments, and "
+                    "nothing has changed since: their results are above. Do not read those files or rerun "
+                    "that command again. Make the change now with edit_file / write_file, or reply with "
+                    "what is blocking you.")})
             if action == "nudge":
                 self.ui.info(f"{idle} read-only steps in a row — telling the model to act")
                 self.messages.append({"role": "user", "content": (

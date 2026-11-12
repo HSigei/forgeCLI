@@ -104,6 +104,22 @@ class App:
             return "no provider"
         return f"{lead.name} · {lead.model}"
 
+    @staticmethod
+    def fresh_page() -> None:
+        """Start Forge on a clean page of its own: the screen and the scrollback are cleared, so
+        whatever ran before (pip output, an old PS prompt) is gone and scrolling up shows only
+        Forge. FORGE_FRESH_PAGE=off keeps the old screen."""
+        if not console.is_terminal or os.environ.get("FORGE_FRESH_PAGE", "on").lower() in ("off", "0", "no"):
+            return
+        try:
+            # erase the screen, erase the scrollback, cursor home (Windows Terminal, conhost with
+            # VT on, xterm-likes). Done twice: some terminals push the screen into the scrollback
+            # when it is erased, and the second ESC[3J removes that copy too.
+            console.file.write("[2J[3J[H[3J")
+            console.file.flush()
+        except Exception:
+            pass
+
     def banner(self) -> None:
         r = self.router
         live = [p for p in r.providers if p.pool.keys]
@@ -135,20 +151,6 @@ class App:
                 facts.append(fact("last", (title or "(untitled)")[:44])
                              .append(f"  {sess.ago(last['updated'])} · ", style="faint")
                              .append("/resume", style="accent"))
-        console.print()
-        # The picture: tiger on the rooftop, FORGE over the neon city (scene.py). Real pixels where
-        # the terminal shows sixel images, half-blocks elsewhere; FORGE_BANNER=off skips it.
-        if console.is_terminal and console.width >= 60 and os.environ.get("FORGE_BANNER", "on") != "off":
-            try:
-                from . import art as artmod, scene
-                cols = console.width - 2
-                if artmod.graphics(console) == "sixel":
-                    sys.stdout.write(" " + scene.sixel(cols) + chr(10))
-                    sys.stdout.flush()
-                else:
-                    console.print(Padding(Text.from_ansi(scene.halfblock(cols)), (0, 0, 0, 1)))
-            except Exception:
-                pass
         from rich.rule import Rule
         head = uimod._gradient("forge", "#ff4fd8", "#ff7ae6").append("  ")
         head.append(f"v{__version__}", style="bold #3ef0ff").append("  multi-model coding agent · failover · team mode")
@@ -158,9 +160,54 @@ class App:
             if i:
                 hint.append("    ")
             hint.append(key, style="bold #ff4fd8").append(" " + what, style="muted")
-        console.print(Panel(Group(head, Rule(style="#3a1d63"), *facts, hint),
-                            box=box.ROUNDED, border_style="#7b2cff", padding=(1, 3),
-                            width=min(console.width - 2, 130)))
+        for t in (head, *facts):
+            t.no_wrap, t.overflow = True, "ellipsis"        # long paths and titles end in …, never wrap
+        pw = min(console.width - 2, 172)                   # as wide as the picture above it
+        panel = Panel(Group(head, Rule(style="#3a1d63"), *facts, hint),
+                      box=box.ROUNDED, border_style="#7b2cff",
+                      padding=(1, 3) if pw >= 100 else (0, 2), width=pw)
+        console.print()
+        on = console.is_terminal and os.environ.get("FORGE_BANNER", "on").lower() not in ("off", "0", "no")
+        # The start screen (splash.py): the cub straight on the terminal, FORGE and the arrow
+        # details beside it, no card. FORGE_BANNER=card shows the framed city card instead,
+        # FORGE_BANNER=scene the rooftop-tiger picture with the panel.
+        if on and os.environ.get("FORGE_BANNER", "").lower() != "scene":
+            try:
+                from . import splash
+                tagline = Text(f"v{__version__}", style="bold #3ef0ff").append(
+                    "  multi-model coding agent · failover · team mode", style="#f3e8ff")
+                arrows = [Text(splash.ARROW, style="bold #ff4fd8").append_text(t) for t in facts]
+                draw = splash.render_card if os.environ.get("FORGE_BANNER", "").lower() == "card" else splash.render
+                if draw(console, [tagline, *arrows, hint]):
+                    console.print()
+                    return
+            except Exception:
+                pass
+        # The picture: tiger on the rooftop, FORGE / BUILD · DEPLOY · SCALE over the midnight city
+        # (scene.py). Real pixels where the terminal shows sixel images, half-blocks elsewhere.
+        # It is sized so the picture, the info panel, the message box and the footer all fit in
+        # the window together; when there's no room for even the smallest size it is left out.
+        if on and console.width >= 60:
+            try:
+                from . import art as artmod, scene
+                panel_h = len(console.render_lines(panel, console.options.update(width=pw), pad=False))
+                room = console.size.height - panel_h - 2 - 3          # blank lines, box, footer
+                sixel_ok = artmod.graphics(console) == "sixel"
+                for cols in sorted({console.width - 2, *[c for c, *_ in scene._load()]}, reverse=True):
+                    if cols > console.width - 2:
+                        continue
+                    pic = None if sixel_ok else Text.from_ansi(scene.halfblock(cols))
+                    rows = scene.rows_for(cols) if sixel_ok else len(pic.plain.split(chr(10)))
+                    if rows <= room:
+                        if sixel_ok:
+                            sys.stdout.write(" " + scene.sixel(cols) + chr(10))
+                            sys.stdout.flush()
+                        else:
+                            console.print(Padding(pic, (0, 0, 0, 1 + max(0, (console.width - 2 - pic.cell_len) // 2))))
+                        break
+            except Exception:
+                pass
+        console.print(panel)
         console.print()
 
     def toolbar(self):
@@ -168,16 +215,26 @@ class App:
         title = (a.session.title or "new conversation")[:32]
         mode = {"smart": "asks for risky only", "ask": "asks every change", "auto": "AUTO-APPROVE"}[a.tools.mode]
         bits = [("class:tb.accent", f" ◆ {self.model_label()} "),
-                ("class:tb", f" ctx {ktok(a.ctx_tokens)} · used {ktok(a.used_in + a.used_out)} tok ")]
+                ("class:tb.sep", "│"), ("class:tb", f" ctx {ktok(a.ctx_tokens)} "),
+                ("class:tb.sep", "│"), ("class:tb", f" used {ktok(a.used_in + a.used_out)} tok ")]
         lead = self.router.lead()
         if lead and lead.pool.keys:
             left = lead.remaining()
             if left.get("req"):
                 bits.append(("class:tb", f"· {left['req'][0]} req left "))
         extra = (" · parallel" if a.parallel else "") + (" · team" if a.team else "")
-        bits.append(("class:tb.warn" if a.tools.mode == "auto" else "class:tb", f"│ {mode}{extra} "))
-        bits.append(("class:tb.dim", f"│ {title} "))
-        return bits
+        bits += [("class:tb.sep", "│"), ("class:tb.warn" if a.tools.mode == "auto" else "class:tb", f" {mode}{extra} "),
+                 ("class:tb.sep", "│"), ("class:tb.dim", f" {title} ")]
+        # One row, always: a footer wider than the window would wrap and grow, pushing the box up.
+        room, out = max(10, console.width - 1), []
+        for cls, txt in bits:
+            if room <= 0:
+                break
+            if len(txt) > room:
+                txt = txt[:max(0, room - 1)] + "…"
+            out.append((cls, txt))
+            room -= len(txt)
+        return out
 
     # commands ---------------------------------------------------------------------
     def handle(self, text: str) -> bool:
@@ -1220,18 +1277,20 @@ class App:
             p["event"].set()
 
     def goodbye(self) -> int:
-        """Clear the screen and show the waving mascot, with how to pick this conversation up again."""
+        """Close Forge cleanly: the screen and the scrollback are cleared, and all that is left is
+        one faint line with the command that resumes this exact conversation.
+        FORGE_FRESH_PAGE=off leaves the conversation on screen instead."""
         s = self.agent.session
-        lines: list[tuple[str, str]] = []
-        if s.messages:
-            lines.append((f"saved: {s.title or s.id}", "muted"))
-            lines.append((f"forge -c  continues it here  ·  forge -r {s.id[:8]}  from anywhere", "faint"))
-        else:
-            lines.append(("forge -r  picks up any saved conversation", "faint"))
+        # The full id: a short prefix is only the date, which several conversations can share.
+        hint = f"forge -r {s.id}" if s.messages else ""
         try:
-            uimod.goodbye(lines, animate=os.environ.get("FORGE_BYE_ANIMATION", "1") != "0")
+            if console.is_terminal and os.environ.get("FORGE_FRESH_PAGE", "on").lower() not in ("off", "0", "no"):
+                console.file.write("[0m[2J[3J[H[3J")
+                console.file.flush()
+            if hint:
+                console.print(Text(hint, style="#6b6480"))
         except Exception:
-            console.print("bye")
+            print(hint or "bye")
         return 0
 
     def loop(self, replay: Session | None = None, pick: bool = False) -> int:
@@ -1248,7 +1307,13 @@ class App:
         except Exception:
             pass
         prompt = make_prompt(self)
+        from . import loader
+        loader.stop()
+        self.fresh_page()
         self.banner()
+        note = getattr(self, "start_note", None)
+        if note:
+            self.ui.warn(note)
         if os.environ.get("FORGE_AUTO_BENCH", "1").strip().lower() not in ("0", "off", "false", "no"):
             # New models get a quick test in the background (two tiny requests each) so their
             # capability scores are measured, not just guessed from the name.
@@ -1475,6 +1540,11 @@ def _paste_clipboard(event: _PromptEvent, read_text: Callable[[], str] | None = 
 
 # --- input -----------------------------------------------------------------------
 
+def _fit(text: str, width: int) -> str:
+    """text cut to width columns, ending in … when it was longer."""
+    return text if len(text) <= width else text[:max(0, width - 1)].rstrip() + "…"
+
+
 def make_prompt(app: App):
     """Fancy prompt_toolkit input when attached to a terminal, plain input() otherwise."""
     if not (sys.stdin.isatty() and sys.stdout.isatty()):
@@ -1604,16 +1674,19 @@ def make_prompt(app: App):
             buf.reset()
 
     style = Style.from_dict({
-        "prompt": "#c084fc bold",
+        "prompt": "#ff4fd8 bold",
+        "edge": "#5b2a9e",
+        "edge.mark": "#d8b4fe bold",
         "ask": "#fbbf24 bold",
         "frame": "#4c3a6b",
         "placeholder": "#6b6480 italic",
         "continuation": "#6b7280",
-        "bottom-toolbar": "noreverse bg:#1f1b2e #9ca3af",
-        "tb": "bg:#1f1b2e #9ca3af",
-        "tb.dim": "bg:#1f1b2e #6b7280",
+        "bottom-toolbar": "noreverse bg:#140a26 #c4b5fd",
+        "tb": "bg:#140a26 #c4b5fd",
+        "tb.sep": "bg:#140a26 #7b2cff",
+        "tb.dim": "bg:#140a26 #a78bfa",
         "tb.warn": "bg:#422006 #fbbf24 bold",
-        "tb.accent": "bg:#2e2547 #d8b4fe bold",
+        "tb.accent": "bg:#2a1052 #f0abfc bold",
         "completion-menu.completion": "bg:#1f1b2e #e5e7eb",
         "completion-menu.completion.current": "bg:#6d28d9 #ffffff",
         "completion-menu.meta.completion": "bg:#1f1b2e #9ca3af",
@@ -1631,8 +1704,10 @@ def make_prompt(app: App):
         key_bindings=kb, multiline=True, style=style,
         prompt_continuation=lambda width, line, wrap: FormattedText([("class:continuation", "  ")]),
         bottom_toolbar=lambda: FormattedText(app.toolbar()),
-        placeholder=FormattedText([("class:placeholder",
-                                    "Ask Forge to build, fix or explain something…   / for commands · tab completes")]),
+        # The hint is cut to the window so it never wraps into a second row of the box.
+        placeholder=lambda: FormattedText([("class:placeholder", _fit(
+            "Ask Forge to build, fix or explain something…   / for commands · tab completes",
+            console.width - 4))]),
         reserve_space_for_menu=6,
         refresh_interval=0.1,   # keeps the pixel city and live status above the box moving
     )
@@ -1641,9 +1716,23 @@ def make_prompt(app: App):
         """What sits above and in front of the box: the live status while Forge works, and the
         question being asked when it waits on you."""
         parts = []
+        try:
+            # How tall the box is right now (typed lines plus wrapped ones), so the live status
+            # above it shrinks instead of pushing the box and the footer off the screen.
+            cols = max(20, console.width - 4)
+            doc = session.default_buffer.document
+            app.ui.input_rows = sum(max(1, -(-len(ln) // cols)) for ln in doc.lines) + (2 if app.ui.pending else 0)
+        except Exception:
+            app.ui.input_rows = 1
         status = app.ui.status_ansi()
         if status:
             parts += to_formatted_text(ANSI(status))
+        # The box's top edge: a thin neon line with the Forge mark, drawn by prompt_toolkit itself
+        # so it always moves with the box (multi-line input, pastes, the menu, resizes).
+        edge = max(10, console.width - 1)
+        label = " ◆ forge "
+        parts += [("class:edge", "╭─"), ("class:edge.mark", label),
+                  ("class:edge", "─" * max(0, edge - len(label) - 2) + "\n")]
         p = app.ui.pending
         if p:
             parts += [("class:ask", f"{p['label']}\n"), ("class:prompt", "› ")]
@@ -1740,6 +1829,13 @@ def main(argv: list[str] | None = None) -> int:
         console = Console(file=sys.stderr, theme=uimod.THEME, highlight=False, soft_wrap=False)
         uimod.console = console
 
+    from . import loader
+    if not (args.prompt or args.status or args.sessions or args.roster) and args.resume is None             and sys.stdin.isatty():
+        # The chat is starting: a loading screen while settings, keys, models and skills load.
+        # Stopped (and wiped) just before the start screen, or on any early exit.
+        import atexit
+        loader.start()
+        atexit.register(loader.stop)
     settings = load_settings()
     settings.auto_approve = args.yes
     settings.verbose = args.verbose
@@ -1747,6 +1843,7 @@ def main(argv: list[str] | None = None) -> int:
     ui = UI(verbose=args.verbose)
 
     if not settings.providers and sys.stdin.isatty():
+        loader.stop()
         # Nothing usable at all (keyless gateways turned off): add a key before the app starts.
         setup_without_app(ui)
         settings = load_settings()
@@ -1764,6 +1861,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.cont or args.resume:
         sid = sess.find(args.resume) if args.resume else sess.latest_for(os.getcwd())
         if not sid:
+            loader.stop()
             ui.error("no matching saved conversation")
             return 1
         session = Session.load(sid)
@@ -1773,6 +1871,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.provider:
         if not agent.router.get(args.provider.lower()):
+            loader.stop()
             ui.error(f"no provider {args.provider!r} configured")
             return 1
         agent.router.pinned = args.provider.lower()
@@ -1812,12 +1911,14 @@ def main(argv: list[str] | None = None) -> int:
     # NEXT 7: first run with no keys of your own → the key walkthrough (enter skips it; asked once).
     if sys.stdin.isatty() and not app.prefs.get("setup_done") and \
             all(p.pool.keys == [keyvault.ANON] for p in agent.router.providers):
+        loader.stop()
         app.cmd_setup("")
         app.prefs["setup_done"] = True
         save_prefs(app.prefs)
     failing = app.failing_keys()
     if failing:
-        ui.warn("keys failing: " + ", ".join(failing[:4]) + (" …" if len(failing) > 4 else "") + " · /keys test")
+        # shown under the start screen (the page is cleared just before it)
+        app.start_note = "keys failing: " + ", ".join(failing[:4]) + (" …" if len(failing) > 4 else "") + " · /keys test"
     return app.loop(replay=session, pick=pick)
 
 

@@ -167,13 +167,16 @@
   .moon { position: absolute; right: 9%; top: 9%; width: 9%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff4fb, #ffc8ee 60%, #ff9fe0); box-shadow: 0 0 40px #ff9fe0aa, 0 0 120px #ff4fd855; }
   .sign { position: absolute; right: 5%; top: 24%; font: 400 clamp(28px, 4.2vw, 72px)/1 var(--pixel); color: #ffe0f8; letter-spacing: .04em; text-shadow: 0 0 4px #fff, 0 0 12px #ff4fd8, 0 0 28px #ff4fd8, 0 0 60px #ff4fd8; user-select: none; }
   .sign small { display: block; font: 600 clamp(9px, 0.9vw, 12px) var(--mono); color: var(--cyan); letter-spacing: .3em; text-shadow: 0 0 10px var(--cyan); margin-top: .7em; text-align: right; }
-  .tiger-btn { position: absolute; left: 3%; bottom: 13.5%; width: 40%; aspect-ratio: 104 / 98; padding: 0; border: 0; background: none; cursor: pointer; z-index: 3; }
-  .tiger { width: 100%; height: 100%; overflow: visible; display: block; }
-  .bubble { position: absolute; left: 36%; top: 7%; max-width: 50%; padding: 10px 14px; background: #fff8f0; color: #1a081e; font: 600 14px/1.35 var(--mono); border-radius: 14px; box-shadow: 4px 4px 0 #ff4fd8; z-index: 4; opacity: 0; pointer-events: none; }
+  /* the clerk: the illustration's own dusk fades into the night, no box around him */
+  .clerk-btn { position: absolute; left: 0; bottom: 2%; width: 54%; aspect-ratio: 1; padding: 0; border: 0; background: none; cursor: pointer; z-index: 3; }
+  .clerk-btn img, .clerk-img { width: 100%; height: 100%; display: block; object-fit: contain; transform-origin: 50% 80%; image-rendering: pixelated; }
+  .clerk-btn:focus-visible { outline: 2px dashed var(--cyan); outline-offset: -10%; border-radius: 50%; }
+  .stamp { position: absolute; left: 33%; top: 62%; padding: 4px 10px; background: #14082ae0; border: 3px solid #ffd23f; border-radius: 6px; color: #ffd23f; font: 700 clamp(11px, 1.2vw, 15px) var(--mono); letter-spacing: .14em; transform: rotate(-12deg); text-shadow: 0 0 10px #ffd23f88; box-shadow: 0 0 14px #ffd23f55, inset 0 0 10px #ffd23f33; opacity: 0; pointer-events: none; z-index: 4; white-space: nowrap; }
+  .bubble { position: absolute; left: 6%; top: 12%; max-width: 46%; padding: 10px 14px; background: #fff8f0; color: #1a081e; font: 600 14px/1.35 var(--mono); border-radius: 14px; box-shadow: 4px 4px 0 #ff4fd8; z-index: 4; opacity: 0; pointer-events: none; }
   .bubble::after { content: ""; position: absolute; left: 16px; bottom: -9px; border: 9px solid transparent; border-bottom: 0; border-top-color: #fff8f0; }
   .scene-hint { position: absolute; left: 8%; bottom: 4%; font: 11px var(--mono); color: #ffffff80; letter-spacing: .1em; z-index: 4; }
   .scene-hint::before { content: "↑ "; color: var(--cyan); }
-  @media (max-width: 480px) { .bubble { font-size: 12px; left: 30%; max-width: 64%; } }
+  @media (max-width: 480px) { .bubble { font-size: 12px; left: 4%; max-width: 64%; } }
 
   /* ── sections ── */
   section { padding: 110px 0; }
@@ -237,8 +240,9 @@
   .card-cap { padding: 16px 20px 20px; }
   .card-cap h3 { margin: 0 0 4px; font: var(--d-weight) 24px var(--display); letter-spacing: var(--d-track); }
   .card-cap p { margin: 0; color: var(--muted); font-size: 15px; }
-  .mood-stage { position: relative; aspect-ratio: 1; background: radial-gradient(circle at 50% 60%, #3a1060, #0b071e 70%); display: grid; place-items: center; }
-  .mood-stage .tiger { width: 70%; height: auto; }
+  .mood-stage { position: relative; aspect-ratio: 1; background: #1e0c33; display: grid; place-items: center; overflow: hidden; }
+  .mood-stage .clerk-img { position: absolute; inset: 0; -webkit-mask-image: none; mask-image: none; }
+  .clerk-slip { position: absolute; right: 8px; bottom: 8px; padding: 5px 9px; border-radius: 6px; background: #fff8f0; color: #1a081e; font: 600 12px var(--mono); box-shadow: 3px 3px 0 #ff4fd8; }
   .moods { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
   .moods button { border: 1px solid var(--line-2); background: transparent; color: var(--text); font: 13px var(--mono); padding: 6px 12px; border-radius: 999px; cursor: pointer; }
   .moods button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
@@ -260,7 +264,7 @@
   #crew .crew { text-align: left; }
   #crew .crew { grid-template-columns: 1fr 1.6fr; gap: 12px; }
   #crew .mood-stage { aspect-ratio: 4 / 3; }
-  #crew .mood-stage .tiger { width: 56%; }
+
   #crew .card-cap { padding: 10px 12px 12px; }
   #crew .card-cap h3 { font-size: 15px; }
   #crew .card-cap p { font-size: 13px; }
@@ -328,7 +332,7 @@
 
   /* ── goodbye ── */
   .bye { padding: 90px 0 120px; text-align: center; }
-  .bye #bye-tiger { width: 150px; margin: 0 auto; }
+  .bye #bye-clerk { display: block; width: 170px; height: 170px; margin: 0 auto; }
   .bye h2 { margin: 18px 0 6px; font-size: clamp(30px, 4vw, 48px); }
   .bye p { margin: 0; color: var(--dim); font: 14px var(--mono); }
   footer { border-top: 1px solid var(--line); padding: 30px 0 110px; color: var(--dim); font-size: 14px; }
@@ -354,7 +358,7 @@
   /* tablets: scene as a wide band under the text */
   @media (min-width: 601px) and (max-width: 960px) {
     .scene { aspect-ratio: 16 / 9; }
-    .tiger-btn { width: 32%; }
+    .clerk-btn { width: 40%; }
     .hero-text { max-width: 640px; }
     .crew { grid-template-columns: 1fr 1fr; }
     .mood-stage { aspect-ratio: 1; }
@@ -410,8 +414,8 @@
   @media (min-width: 961px) {
     [data-theme="editorial"] .hero-grid { grid-template-columns: 1fr; gap: 44px; }
     [data-theme="editorial"] .scene { aspect-ratio: 21 / 8; }
-    [data-theme="editorial"] .tiger-btn { width: 22%; left: 6%; }
-    [data-theme="editorial"] .bubble { left: 24%; }
+    [data-theme="editorial"] .clerk-btn { width: 28%; left: 4%; }
+    [data-theme="editorial"] .bubble { left: 6%; }
   }
 
   /* Studio: a poster - giant headline across the page, scene beside the copy */
@@ -500,7 +504,7 @@
     <div class="hero-gradient" id="hero-gradient" aria-hidden="true"></div>
     <div class="wrap hero-grid">
       <div class="hero-text">
-        <div class="eyebrow">terminal coding agent · v<span class="ver">0.8.1</span></div>
+        <div class="eyebrow">terminal coding agent · v<span class="ver">0.8.2</span></div>
         <h1 class="display"><span class="line"><span>The coding agent</span></span><span class="line"><span>that <em>never stops</em></span></span><span class="line"><span>at a rate limit.</span></span></h1>
         <p class="lede">Forge reads your project, edits files and runs commands. Bring your own API keys from as many providers as you like: when one says 429, the next one picks up mid-sentence.</p>
         <div class="hero-actions">
@@ -517,9 +521,12 @@
         <div class="sign" aria-hidden="true"><span class="sign-word">FORGE</span><small>open all night</small></div>
         <svg class="layer near" id="near" viewBox="0 0 1000 200" preserveAspectRatio="none" aria-hidden="true"></svg>
         <div class="street" aria-hidden="true"></div>
-        <button class="tiger-btn" id="hero-tiger" type="button" aria-label="Poke the tiger"></button>
+        <button class="clerk-btn" id="hero-clerk" type="button" aria-label="Ask the clerk to sign off">
+          <img src="media/clerk.webp" srcset="media/clerk-640.webp 640w, media/clerk.webp 1200w" sizes="(max-width: 960px) 46vw, 30vw" width="1200" height="1200" alt="The clerk, a pixel-art tiger cub in a cap and jacket beside a stack of parcels">
+        </button>
+        <div class="stamp" id="stamp" aria-hidden="true">CHECKED ✓</div>
         <div class="bubble" id="bubble" role="status" aria-live="polite"></div>
-        <div class="scene-hint" aria-hidden="true">poke the tiger</div>
+        <div class="scene-hint" aria-hidden="true">ask the clerk</div>
       </div>
     </div>
   </div>
@@ -580,17 +587,20 @@
       <aside class="crew-note">
         <div class="eyebrow">the crew</div>
         <h2 id="cr-h">Meet the crew.</h2>
-        <p class="crew-sub">Two little coworkers who keep you company while Forge works. Go on, poke them.</p>
+        <p class="crew-sub">Two little coworkers on shift while Forge works: one checks the parcels, one carries them. Go on, try them.</p>
       <div class="crew">
         <div class="card">
-          <div class="mood-stage" id="mood-stage"></div>
+          <div class="mood-stage" id="mood-stage">
+            <img class="clerk-img" src="media/clerk-640.webp" width="640" height="640" loading="lazy" alt="The clerk signing off a parcel at the door">
+            <div class="clerk-slip" id="clerk-slip" role="status" aria-live="polite">✓ 3 files edited · tests pass</div>
+          </div>
           <div class="card-cap">
-            <h3>The cub</h3>
-            <p>Greets you, waves you off, has opinions.</p>
-            <div class="moods" role="group" aria-label="Tiger mood">
-              <button type="button" data-mood="idle" aria-pressed="true">watching</button>
-              <button type="button" data-mood="think" aria-pressed="false">thinking</button>
-              <button type="button" data-mood="happy" aria-pressed="false">done</button>
+            <h3>The clerk</h3>
+            <p>Signs off every parcel before it leaves the door.</p>
+            <div class="moods" role="group" aria-label="What the clerk checks">
+              <button type="button" data-slip="✓ 3 files edited · tests pass" aria-pressed="true">checks edits</button>
+              <button type="button" data-slip="? git push — your call" aria-pressed="false">asks first</button>
+              <button type="button" data-slip="✓ signed · forge -c to reopen" aria-pressed="false">signs off</button>
             </div>
           </div>
         </div>
@@ -657,7 +667,7 @@
       </div>
       <div class="panel" role="tabpanel" id="p-exe" aria-labelledby="t-exe" tabindex="0" hidden>
         <ol class="steps">
-          <li><div><p><code>forge-v<span class="ver">0.8.1</span>-windows-x64.zip</code>, no Python needed.</p><a class="btn btn-primary rel" href="https://github.com/HSigei/forgeCLI/releases/latest">Download for Windows</a></div></li>
+          <li><div><p><code>forge-v<span class="ver">0.8.2</span>-windows-x64.zip</code>, no Python needed.</p><a class="btn btn-primary rel" href="https://github.com/HSigei/forgeCLI/releases/latest">Download for Windows</a></div></li>
           <li><div><p>Unzip and put the folder holding <code>forge.exe</code> on your PATH.</p></div></li>
           <li><div><p>New terminal.</p><div class="cmd"><code id="c7">forge</code><button class="copy" type="button" data-copy="c7">copy</button></div></div></li>
         </ol>
@@ -684,7 +694,7 @@
   </section>
 
   <div class="bye">
-    <div id="bye-tiger"></div>
+    <img id="bye-clerk" class="clerk-img" src="media/clerk-640.webp" width="640" height="640" loading="lazy" alt="">
     <h2 class="display">see you soon</h2>
     <p>forge -c continues it here · forge -r from anywhere</p>
   </div>
@@ -756,97 +766,6 @@
   $$("a.gh").forEach(function (a) { a.href = "https://github.com/" + repo; });
   $$("a.rel").forEach(function (a) { a.href = "https://github.com/" + repo + "/releases/latest"; });
 
-  /* ── the tiger, drawn from the same shapes as forgecli/art.py ── */
-  var uid = 0;
-  function tigerSVG() {
-    var p = "t" + (uid++);
-    var F = "#ff842c", FL = "#ffaa52", FS = "#de581e", C = "#ffecd6", W = "#fff8f0", S = "#2c0c20", O = "#1a081e", N = "#ff5c96";
-    function e(x, y, rx, ry, c, x2) { return '<ellipse cx="' + x + '" cy="' + y + '" rx="' + rx + '" ry="' + ry + '" fill="' + c + '"' + (x2 || "") + "/>"; }
-    function q(pts, c) { return '<polygon points="' + pts.map(function (a) { return a.join(","); }).join(" ") + '" fill="' + c + '"/>'; }
-    var s = '<svg class="tiger" viewBox="-52 -50 104 98" aria-hidden="true" focusable="false"><defs>' +
-      '<filter id="' + p + 'b" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.4"/></filter>' +
-      '<filter id="' + p + 'g" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="1.6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>' +
-      '</defs><g class="head">';
-    s += '<g filter="url(#' + p + 'b)" opacity=".9">';
-    [[-1, "#ff4fd8"], [1, "#3ef0ff"]].forEach(function (a) { s += e(a[0] * 29.6, -26, 14.5, 14.5, a[1]) + e(a[0] * 3.2, 2, 42, 37, a[1]); });
-    s += "</g>";
-    [-1, 1].forEach(function (sx) {
-      s += '<g class="ear" data-side="' + sx + '">' +
-        e(sx * 27, -26, 14.5, 14.5, O) + e(sx * 27, -26, 12.5, 12.5, F) + e(sx * 26, -23.5, 7, 7, C) +
-        q([[sx * 34, -34], [sx * 39, -27], [sx * 31, -30]], S) + "</g>";
-    });
-    s += e(0, 2, 41, 36, O) + e(0, 2, 39.5, 34.5, F) + e(0, 15, 36, 20, FS) + e(0, 4, 37, 22, F) + e(-7, -12, 24, 14, FL);
-    s += q([[-3.5, -32], [3.5, -32], [0, -16]], S) + q([[-15, -29], [-9, -31], [-8, -19]], S) + q([[9, -31], [15, -29], [8, -19]], S);
-    [-1, 1].forEach(function (sx) {
-      s += q([[sx * 40, -4], [sx * 40, 4], [sx * 26, 1]], S) + q([[sx * 38.5, 10], [sx * 36.5, 16], [sx * 27, 11]], S) + q([[sx * 24, -12.5], [sx * 10, -14], [sx * 13, -9.5]], S);
-    });
-    [-1, 1].forEach(function (sx) {
-      s += e(sx * 19, 18, 14, 10, C) + q([[sx * 31, 12], [sx * 43, 19], [sx * 30, 22]], C) + q([[sx * 30, 20], [sx * 38, 28], [sx * 24, 26]], C) + q([[sx * 41, 13], [sx * 44, 18], [sx * 35, 16]], S);
-    });
-    s += e(0, 19, 10.5, 7.5, W) + e(0, 29, 8, 4.5, C);
-    s += q([[-4.6, 11], [4.6, 11], [0, 15.5]], N);
-    s += '<path d="M0 15.5v2.4M-5.2 18.6q2.6 2.8 5.2 0q2.6 2.8 5.2 0" stroke="' + O + '" stroke-width="1.3" fill="none" stroke-linecap="round"/>';
-    s += '<g class="eyes">';
-    [-1, 1].forEach(function (sx) {
-      s += '<g class="eye" data-side="' + sx + '">' + e(sx * 14, 0, 9.6, 9.2, O) +
-        e(sx * 14, 0, 8, 7.7, "#3ef0ff", ' filter="url(#' + p + 'g)"') + e(sx * 14, 0, 5.5, 5.2, "#9ffbff") +
-        '<g class="pupil">' + e(sx * 14, 0.5, 1.9, 5.6, "#08142c") + '<circle cx="' + (sx * 14 + 2.4) + '" cy="-2.8" r="1.9" fill="#fff"/></g></g>';
-    });
-    s += "</g>";
-    s += '<g class="happy" style="display:none" filter="url(#' + p + 'g)">';
-    [-1, 1].forEach(function (sx) { s += '<path d="M' + (sx * 14 - 7.5) + ' 3q7.5 -10 15 0" stroke="#3ef0ff" stroke-width="3.2" fill="none" stroke-linecap="round"/>'; });
-    s += "</g>";
-    s += '<g class="think" style="display:none"><circle cx="36" cy="-40" r="2.2" fill="#fff"/><circle cx="43" cy="-47" r="3.2" fill="#fff"/></g>';
-    s += "</g></svg>";
-    return s;
-  }
-
-  function Tiger(host) {
-    host.innerHTML = tigerSVG();
-    var svg = $("svg", host), head = $(".head", svg);
-    var pupils = $$(".pupil", svg), eyes = $$(".eye", svg), ears = $$(".ear", svg);
-    var t = { svg: svg, mood: "idle" };
-    t.look = function (nx, ny) {   // -1..1
-      if (t.mood !== "idle" || !G) return;
-      G.to(pupils, { x: nx * 2.6, y: ny * 2.2, duration: 0.35, ease: "power2.out", overwrite: "auto" });
-      G.to(head, { rotation: nx * 5, duration: 0.6, ease: "power2.out", overwrite: "auto", svgOrigin: "0 30" });
-    };
-    t.blink = function () {
-      if (!G || t.mood === "happy") return;
-      eyes.forEach(function (ey) {
-        G.to(ey, { scaleY: 0.08, duration: 0.07, yoyo: true, repeat: 1, ease: "power1.in", svgOrigin: (ey.dataset.side * 14) + " 0" });
-      });
-    };
-    t.twitch = function () {
-      if (!G) return;
-      var ear = ears[Math.random() < 0.5 ? 0 : 1], side = +ear.dataset.side;
-      G.fromTo(ear, { rotation: 0 }, { rotation: side * 14, duration: 0.08, yoyo: true, repeat: 3, ease: "sine.inOut", svgOrigin: (side * 27) + " -14" });
-    };
-    t.setMood = function (m) {
-      t.mood = m;
-      $(".eyes", svg).style.display = m === "happy" ? "none" : "";
-      $(".happy", svg).style.display = m === "happy" ? "" : "none";
-      $(".think", svg).style.display = m === "think" ? "" : "none";
-      if (!G) return;
-      G.killTweensOf(pupils);
-      if (m === "think") {
-        G.to(pupils, { x: 2.4, y: -2.4, duration: 0.4, ease: "power2.out" });
-        G.to(head, { rotation: 7, duration: 0.5, svgOrigin: "0 30" });
-      } else if (m === "happy") {
-        G.to(head, { rotation: 0, duration: 0.3, svgOrigin: "0 30" });
-        if (!reduce) G.fromTo(head, { y: 0 }, { y: -6, duration: 0.16, yoyo: true, repeat: 3, ease: "power1.out" });
-      } else {
-        G.to(pupils, { x: 0, y: 0, duration: 0.3 });
-        G.to(head, { rotation: 0, y: 0, duration: 0.4, svgOrigin: "0 30" });
-      }
-    };
-    t.twitch = t.twitch;
-    if (!reduce && G) {
-      (function loop() { G.delayedCall(2 + Math.random() * 3.5, function () { t.blink(); if (Math.random() < 0.3) t.twitch(); loop(); }); })();
-    }
-    return t;
-  }
-
   /* ── night scene ── */
   var rnd = (function (seed) { return function () { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }; })(11);
   var NS = "http://www.w3.org/2000/svg";
@@ -870,16 +789,16 @@
   city($("#far"), 300, "#1b0d3a", 0.18, ["#ff4fd8", "#7a4dff", "#3ef0ff"]);
   city($("#near"), 200, "#0d0620", 0.28, ["#ffc857", "#3ef0ff", "#ff4fd8", "#ffc857"]);
 
-  var heroBtn = $("#hero-tiger"), heroTiger = Tiger(heroBtn);
+  var heroBtn = $("#hero-clerk"), heroImg = heroBtn.querySelector("img"), stamp = $("#stamp");
   var bubble = $("#bubble");
   var lines = [
-    "groq is resting. nvidia has it.",
-    "429? I know a guy.",
-    "edits in this folder: on me. git push: on you.",
-    "two keys? twice the rate limit.",
-    "saved. forge -c brings it back.",
-    "I asked before deleting anything. You're welcome.",
-    "the courier's on his way."
+    "groq bounced it. nvidia signed for it.",
+    "429 on the label? rerouted, no charge.",
+    "edits in this folder: signed. git push: your signature.",
+    "tests ran after every edit. all parcels intact.",
+    "nothing gets deleted without your autograph.",
+    "logged. forge -c reopens the paperwork.",
+    "checked. the courier's taking it from here."
   ];
   var li = 0, bubbleT = null;
   function say(text) {
@@ -890,18 +809,22 @@
     G.fromTo(bubble, { opacity: 0, y: 10, scale: 0.9 }, { opacity: 1, y: 0, scale: 1, duration: 0.35, ease: "back.out(2)" });
     bubbleT = setTimeout(function () { G.to(bubble, { opacity: 0, y: -6, duration: 0.3 }); }, 3000);
   }
+  function stampIt() {
+    if (!G || reduce) return;
+    G.killTweensOf([stamp, heroImg]);
+    G.fromTo(stamp, { opacity: 0, scale: 2.2, rotation: -4 }, { opacity: 1, scale: 1, rotation: -12, duration: 0.28, ease: "power4.in" });
+    G.to(stamp, { opacity: 0, duration: 0.4, delay: 1.4 });
+    G.fromTo(heroImg, { y: 0 }, { y: -6, duration: 0.12, yoyo: true, repeat: 1, ease: "power2.out" });
+  }
   heroBtn.addEventListener("click", function () {
-    heroTiger.setMood("happy");
+    stampIt();
     say(lines[li++ % lines.length]);
-    setTimeout(function () { heroTiger.setMood("idle"); }, 1300);
   });
-  heroBtn.addEventListener("pointerenter", function () { heroTiger.twitch(); });
 
   var scene = $("#scene");
   window.addEventListener("pointermove", function (ev) {
     var tr = heroBtn.getBoundingClientRect();
-    var cx = tr.left + tr.width / 2, cy = tr.top + tr.height * 0.45;
-    heroTiger.look(Math.max(-1, Math.min(1, (ev.clientX - cx) / 400)), Math.max(-1, Math.min(1, (ev.clientY - cy) / 300)));
+    if (G && !reduce) G.to(heroImg, { rotation: Math.max(-1, Math.min(1, (ev.clientX - tr.left - tr.width / 2) / 600)) * 2, duration: 0.8, ease: "power2.out", overwrite: "auto" });
     var r = scene.getBoundingClientRect();
     if (G && !reduce && ev.clientY < r.bottom + 100 && r.bottom > 0) {
       var nx = (ev.clientX - r.left) / r.width - 0.5;
@@ -959,7 +882,7 @@
 
   /* ── touch screens get touch wording ── */
   if (window.matchMedia("(hover: none)").matches) {
-    $(".scene-hint").textContent = "tap the tiger";
+    $(".scene-hint").textContent = "tap the clerk";
     $(".lane-tip").textContent = "tap anywhere";
   }
 
@@ -1007,21 +930,15 @@
   }
   play.addEventListener("click", runRelay);
 
-  /* ── tiger mood card ── */
-  var moodTiger = Tiger($("#mood-stage"));
+  /* ── clerk card: what he checks ── */
+  var slip = $("#clerk-slip");
   $$(".moods button").forEach(function (b) {
     b.addEventListener("click", function () {
       $$(".moods button").forEach(function (x) { x.setAttribute("aria-pressed", x === b); });
-      moodTiger.setMood(b.dataset.mood);
+      slip.textContent = b.dataset.slip;
+      if (G && !reduce) G.fromTo(slip, { y: 8, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3, ease: "back.out(2)" });
     });
   });
-  $("#mood-stage").addEventListener("pointermove", function (ev) {
-    var r = ev.currentTarget.getBoundingClientRect();
-    moodTiger.look((ev.clientX - r.left) / r.width * 2 - 1, (ev.clientY - r.top) / r.height * 2 - 1);
-  });
-
-  /* ── goodbye tiger ── */
-  Tiger($("#bye-tiger")).setMood("happy");
 
   /* ── sprite helper: 8 walk frames, top row loaded, bottom row empty ── */
   function Sprite(node) {
@@ -1144,7 +1061,7 @@
     .fromTo(".sign", { opacity: 0 }, { keyframes: [{ opacity: 0.2, duration: 0.06 }, { opacity: 0, duration: 0.08 }, { opacity: 0.8, duration: 0.05 }, { opacity: 0.1, duration: 0.1 }, { opacity: 1, duration: 0.05 }] }, 1.1)
     .from(heroBtn, { yPercent: 70, opacity: 0, duration: 1, ease: "back.out(1.6)" }, 1.0)
     .to(".scene-hint", { opacity: 1, duration: 0.6 }, 2)
-    .add(function () { say("hi. need something built?"); }, 1.9);
+    .add(function () { say("clipboard's ready. what are we shipping?"); }, 1.9);
 
   // the city lives
   G.to(".star", { opacity: function () { return Math.random() * 0.4 + 0.1; }, duration: function () { return 1 + Math.random() * 2; }, repeat: -1, yoyo: true, stagger: { each: 0.03, from: "random" } });
@@ -1217,7 +1134,7 @@
   });
 
   // goodbye
-  G.from("#bye-tiger", { y: 60, scale: 0.6, opacity: 0, duration: 1, ease: "back.out(1.7)", scrollTrigger: { trigger: ".bye", start: "top 85%" } });
+  G.from("#bye-clerk", { y: 60, scale: 0.6, opacity: 0, duration: 1, ease: "back.out(1.7)", scrollTrigger: { trigger: ".bye", start: "top 85%" } });
 
   window.addEventListener("load", function () { ST.refresh(); });
 })();

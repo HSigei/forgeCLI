@@ -243,4 +243,26 @@ def user_message(text: str, root: pathlib.Path | None = None) -> dict:
         merged = list(dict.fromkeys((msg.get("images") or []) + imgs))[:4]
         if merged:
             msg["images"] = merged
+    links = urls(text)
+    if links:
+        msg["content"] = (msg.get("content") or "") + link_note(links)
     return msg
+
+
+_URL = re.compile(r"""\bhttps?://[^\s<>"')\]]+""", re.I)
+
+
+def urls(text: str) -> list[str]:
+    return list(dict.fromkeys(u.rstrip(".,;:!?") for u in _URL.findall(text or "")))[:5]
+
+
+def link_note(links: list[str]) -> str:
+    """A link in a request is almost always something to use, not text to paste: "add
+    https://shadergradient.co/" meant one of its gradients as the background, and the model put the
+    URL in the navbar. Say so right next to the request."""
+    from .brief import LINK_MARK
+    return (LINK_MARK + (": " if len(links) == 1 else "s: ") + ", ".join(links) + ". A link in a "
+            "request is usually a resource to use - a library, component, effect, gradient, font, design "
+            "or docs to follow, or a page to take content from. Fetch it, find out what it offers (its "
+            "docs, README or npm package) and use it the way the user's words say. Don't just paste the "
+            "URL onto the page; show it as a visible link only if the user asked for a link.]")

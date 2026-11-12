@@ -15,6 +15,7 @@ import json
 import re
 
 ATTACH_MARK = "\n\n[Forge: the user attached"
+LINK_MARK = "\n\n[Forge: the user gave a link"
 ANSWER_PREFIX = "The user answered: "
 MAX_QUESTIONS = 2          # ask_user calls per request before Forge says "build with what you have"
 
@@ -77,7 +78,7 @@ def own_text(content) -> str:
     if isinstance(content, list):
         content = " ".join(p.get("text", "") for p in content if isinstance(p, dict))
     text = str(content or "")
-    return text.split(ATTACH_MARK, 1)[0]
+    return text.split(ATTACH_MARK, 1)[0].split(LINK_MARK, 1)[0]
 
 
 def _is_forge(text: str) -> bool:
@@ -160,6 +161,41 @@ def attachments(messages: list[dict]) -> list[str]:
     return seen
 
 
+def recent_files(messages: list[dict], limit: int = 4) -> list[str]:
+    """The files of the latest piece of work: those written or edited after the newest user request
+    that changed any, newest first. Follow-ups ("make this the logo", "add a gradient") are about this
+    work, not about whatever the conversation began with: a model re-built an earlier calculator into
+    the website it had just been told to make instead."""
+    out: list[str] = []
+    for m in reversed(messages):
+        if m.get("role") == "user" and out:
+            text = own_text(m.get("content")).strip()
+            if text and not _is_forge(text) and not is_continuation(text):
+                break           # older work belongs to an older request
+        if m.get("role") != "assistant":
+            continue
+        for c in reversed(m.get("tool_calls") or []):
+            fn = c.get("function") or {}
+            name = fn.get("name")
+            if name not in ("write_file", "edit_file", "apply_patch"):
+                continue
+            try:
+                args = json.loads(fn.get("arguments") or "{}")
+            except ValueError:
+                continue
+            if not isinstance(args, dict):
+                continue
+            paths = ([str(args.get("path") or "")] if name != "apply_patch" else
+                     re.findall(r"^\*\*\* (?:Add|Update) File: (.+)$", str(args.get("patch") or ""), re.M))
+            for path in paths:
+                path = path.strip()
+                if path and path not in out:
+                    out.append(path)
+            if len(out) >= limit:
+                return out[:limit]
+    return out
+
+
 def _clip(s: str, n: int) -> str:
     s = re.sub(r"\s+", " ", s).strip()
     return s if len(s) <= n else s[:n - 1] + "…"
@@ -178,10 +214,19 @@ def build(messages: list[dict], todo: list[dict] | None = None) -> str:
     current = current_request(messages)
     earlier = [r for r in reqs if r != current and not is_continuation(r)][-5:]
     if earlier:
-        lines.append("Earlier requests (oldest first):")
+        lines.append("Earlier requests (oldest first) - context only. When the user moved on to "
+                     "something else (\"instead\", \"not the X\", a new thing to build), the older work "
+                     "is finished: never go back to it, rebuild it or reuse its design unless the "
+                     "current request asks; where they differ, the newest request wins:")
         lines += [f"- {_clip(r, 300)}" for r in earlier]
     if current:
         lines.append(f"Current request: {_clip(current, 900)}")
+    worked = recent_files(messages)
+    if worked and len(reqs) > 1:
+        lines.append("Latest work (newest first): " + ", ".join(worked) + ". Unless the user names "
+                     "something else, a follow-up (\"this\", \"it\", \"the logo\", \"the site\", \"add "
+                     "X\") changes this work in place - keep what it is and add to it; don't turn it "
+                     "back into an earlier project.")
     if reqs and is_continuation(reqs[-1]) and current != reqs[-1]:
         lines.append(f"The user's newest message was \"{_clip(own_text(reqs[-1]), 60)}\": keep working "
                      "on the current request from where it stopped. Don't start over, don't re-read "
