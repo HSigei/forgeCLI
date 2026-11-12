@@ -76,7 +76,7 @@ When a step is risky, Forge stops and asks:
 
 The command is `forge` whichever way you install it.
 
-**Updates.** Forge checks PyPI once a day in the background and shows `update  0.8.0 → 0.9.0 is out`
+**Updates.** Forge checks PyPI once a day in the background and shows `update  0.8.1 → 0.9.0 is out`
 on the start screen when there's a newer version. Nothing installs by itself: type `/update`
 (or run `forge --update`) to install it — it picks `pipx upgrade` or `pip install --upgrade` to match
 how you installed. On Windows Forge closes and the update finishes in a new window; your conversation
