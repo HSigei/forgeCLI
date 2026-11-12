@@ -23,7 +23,7 @@ winget manifests live in microsoft/winget-pkgs and are reviewed by Microsoft. Af
 release, from a Windows machine:
 
     winget install wingetcreate
-    wingetcreate new https://github.com/HSigei/forgeCLI/releases/download/v0.8.5/forge-v0.8.5-windows-x64.zip
+    wingetcreate new https://github.com/HSigei/forgeCLI/releases/download/v0.8.6/forge-v0.8.6-windows-x64.zip
 
 Use package id `HSigei.Forge`, mark it as a `portable` zip with `forge.exe` as the command. For later
 versions: `wingetcreate update HSigei.Forge -u <new zip url> -v <version> --submit`.

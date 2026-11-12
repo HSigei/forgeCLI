@@ -2601,6 +2601,26 @@ components:
         assert g._test_guard("edit_file", _j.dumps({"path": str(tf)})) == ""
     print("ok  error in the nudge, tests kept while failing, repeat read refused")
 
+    # 0.8.6: honest edit-miss wording, apply_patch hands over to edit_file, empty calls explained.
+    with _tf.TemporaryDirectory() as d:
+        from forgecli.tools import Tools as _T
+        tt = _T(UI(), "powershell")
+        f = pathlib.Path(d, "p.py"); f.write_text("def write(key):\n    return len(key)\n", encoding="utf-8")
+        tt.execute("read_file", _j.dumps({"path": str(f)}))
+        miss = tt.execute("edit_file", _j.dumps({"path": str(f), "old_string": "return len(keys)",
+                                                  "new_string": "return len(str(key))"}))
+        assert "has not changed since you read it" in miss, miss
+        f.write_text("def write(key):\n    return len(key)  # x\n", encoding="utf-8")
+        import os as _os; _os.utime(f, (1, 1))
+        miss = tt.execute("edit_file", _j.dumps({"path": str(f), "old_string": "return len(keys)",
+                                                  "new_string": "return len(str(key))"}))
+        assert "has changed since you read it" in miss, miss
+        bad = "*** Begin Patch\n*** Update File: " + str(f) + "\n@@\n-nothing here\n+x\n*** End Patch"
+        tt.execute("apply_patch", _j.dumps({"patch": bad}))
+        assert "Use edit_file" in tt.execute("apply_patch", _j.dumps({"patch": bad}))
+        assert "no arguments" in tt.execute("edit_file", "{}")
+    print("ok  edit-miss wording, apply_patch hands over to edit_file, empty calls explained")
+
     print("\nALL TESTS PASSED")
 
 

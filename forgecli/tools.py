@@ -132,7 +132,7 @@ _PS_PIPES = [
 ]
 
 
-def _closest(text: str, old: str) -> str:
+def _closest(text: str, old: str, changed: bool = True) -> str:
     """The part of the file most like the text the model tried to replace, so the retry can copy
     it exactly instead of guessing from a stale memory of the file (the kvlite edit loop)."""
     lines, want = text.splitlines(), old.strip("\n").splitlines() or [old]
@@ -151,7 +151,9 @@ def _closest(text: str, old: str) -> str:
         return " Nothing in the file looks like it; read the file again before editing."
     lo, hi = max(0, at - 2), min(len(lines), at + k + 2)
     snippet = "\n".join(f"{j + 1:>5}  {lines[j]}" for j in range(lo, hi))
-    return (f" The file has changed since you read it. Closest match (lines {at + 1}-{at + k}), copy "
+    why = (" The file has changed since you read it." if changed else
+           " The file has not changed since you read it: your old_string does not match its text exactly.")
+    return (f"{why} Closest match (lines {at + 1}-{at + k}), copy "
             f"old_string from this exactly, without the line numbers:\n{snippet}")
 
 
@@ -438,6 +440,9 @@ class Tools:
         try:
             return _clip(fn(**args))
         except TypeError as e:
+            if not args:
+                return (f"Error: {name} was called with no arguments (the call was empty or cut off). "
+                        "Call it again with all its arguments filled in.")
             return f"Error: bad arguments for {name}: {e}"
         except Exception as e:
             return f"Error: {type(e).__name__}: {e}"
@@ -526,7 +531,7 @@ class Tools:
             return lazy
         n = text.count(old_string)
         if n == 0:
-            return "Error: old_string not found." + _closest(text, old_string)
+            return "Error: old_string not found." + _closest(text, old_string, self._changed_since_read(p))
         if n > 1 and not replace_all:
             return f"Error: old_string occurs {n} times. Add surrounding context or set replace_all."
         new = text.replace(old_string, new_string) if replace_all else text.replace(old_string, new_string, 1)
@@ -544,12 +549,28 @@ class Tools:
         return (f"Edited {p} ({n if replace_all else 1} replacement{'s' if replace_all and n > 1 else ''})."
                 + self._syntax_note(p))
 
+    def _changed_since_read(self, p) -> bool:
+        """True only when the file really changed after the model last read it (or was never read)."""
+        try:
+            now = p.stat().st_mtime
+        except OSError:
+            return True
+        seen = [v[0] for k, v in self.seen.items() if k[0] == str(p)]
+        return not seen or all(m != now for m in seen)
+
     def t_apply_patch(self, patch: str) -> str:
         try:
             operations = self._parse_patch(patch)
             changes = self._prepare_patch(operations)
         except (OSError, UnicodeError, ValueError) as e:
-            return f"Error: patch not applied: {e}"
+            self.patch_misses = getattr(self, "patch_misses", 0) + 1
+            if self.patch_misses >= 2:
+                return (f"Error: patch not applied: {e}. apply_patch has failed {self.patch_misses} times; "
+                        "stop using it for this change. Use edit_file with one small old_string copied "
+                        "exactly from the file (a few unique lines), one change per call.")
+            return (f"Error: patch not applied: {e}. Give each hunk more unique context lines, or use "
+                    "edit_file with an exact old_string.")
+        self.patch_misses = 0
         if not changes:
             return "Error: patch contains no file changes."
         for path, old, new, kind in changes:
