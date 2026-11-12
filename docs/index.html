@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="media/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&family=IBM+Plex+Sans:wght@400;500;600&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;600;800&family=Newsreader:opsz,wght@6..72,400;6..72,500&family=Silkscreen&family=Space+Grotesk:wght@400;500;700&family=Syne:wght@600;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&family=IBM+Plex+Sans:wght@400;500;600&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;600;800&family=Newsreader:opsz,wght@6..72,400;6..72,500&family=Silkscreen&family=Geist:wght@400;500;600;700&family=Syne:wght@600;800&display=swap" rel="stylesheet">
 <style>
   /* ── themes: the six archetypes from the design guide ── */
   :root, [data-theme="console"] {
@@ -22,7 +22,7 @@
     --line: #2a2540; --line-2: #3b3460;
     --text: #ece9f7; --muted: #a19bbd; --dim: #6f6990;
     --accent: #ff4fd8; --accent-ink: #14001a; --accent-2: #3ef0ff;
-    --display: "Space Grotesk", system-ui, sans-serif; --body: "Space Grotesk", system-ui, sans-serif;
+    --display: "Geist", system-ui, sans-serif; --body: "Geist", system-ui, sans-serif;
     --d-weight: 700; --d-track: -0.02em;
     --r: 12px; --glow: 0 0 28px color-mix(in srgb, var(--accent) 45%, transparent);
     --page-bg: radial-gradient(60% 50% at 70% 0%, #2a0f3a 0%, transparent 70%);
@@ -61,7 +61,7 @@
     --line: #2a2a2a; --line-2: #3d3d3d;
     --text: #f4f4f0; --muted: #a8a8a0; --dim: #6c6c66;
     --accent: #d7ff3a; --accent-ink: #0c0c0c; --accent-2: #ff4fd8;
-    --display: "Syne", system-ui, sans-serif; --body: "Space Grotesk", system-ui, sans-serif;
+    --display: "Syne", system-ui, sans-serif; --body: "Geist", system-ui, sans-serif;
     --d-weight: 800; --d-track: -0.045em; --r: 0px; --glow: none; --page-bg: none;
     color-scheme: dark;
   }
@@ -70,7 +70,7 @@
     --line: #1b3152; --line-2: #2a4870;
     --text: #e4edff; --muted: #9db0d3; --dim: #64799e;
     --accent: #5ab0ff; --accent-ink: #04101f; --accent-2: #7dffcf;
-    --display: "Space Grotesk", system-ui, sans-serif; --body: "Space Grotesk", system-ui, sans-serif;
+    --display: "Geist", system-ui, sans-serif; --body: "Geist", system-ui, sans-serif;
     --d-weight: 500; --d-track: -0.02em; --r: 14px; --glow: 0 0 30px #5ab0ff40;
     --page-bg: linear-gradient(#1b315240 1px, transparent 1px) 0 0/48px 48px, linear-gradient(90deg, #1b315240 1px, transparent 1px) 0 0/48px 48px;
     color-scheme: dark;
@@ -475,6 +475,8 @@
   .shot img { border-radius: 10px;
     -webkit-mask-image: linear-gradient(#000 80%, transparent); mask-image: linear-gradient(#000 80%, transparent); }
   details.docs { border: 0; border-radius: 0; background: transparent; border-top: 1px solid var(--line-2); border-bottom: 1px solid var(--line-2); }
+  .docs-link { display: inline-flex; align-items: center; gap: 10px; padding: 14px 22px; border-radius: 10px; background: var(--accent); color: #14001a; font-weight: 600; text-decoration: none; }
+  .docs-link:hover { filter: brightness(1.1); text-decoration: none; }
 </style>
 </head>
 <body>
@@ -486,7 +488,7 @@
     <nav aria-label="Main" id="main-nav">
       <a class="hide-sm" href="#failover">Failover</a>
       <a class="hide-sm" href="#crew">Crew</a>
-      <a class="hide-sm" href="#docs">Docs</a>
+      <a class="hide-sm" href="docs.html">Docs</a>
     </nav>
     <a class="btn btn-primary nav-cta" href="#install">Install</a>
     <button class="menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="main-nav" aria-label="Menu"><span></span><span></span></button>
@@ -677,10 +679,7 @@
         <h2 id="dc-h" class="display">The long version.</h2>
         <p>Commands, keys, failover settings, skills, team mode, config.</p>
       </div>
-      <details class="docs" id="docs-box">
-        <summary>Open the guide</summary>
-        <div id="readme"><p class="state">Loading the guide…</p></div>
-      </details>
+      <a class="docs-link" href="docs.html">Open the docs <span aria-hidden="true">→</span></a>
     </div>
   </section>
 
@@ -1095,24 +1094,6 @@
   walkX = walkTarget;
   requestAnimationFrame(surf);
 
-  /* ── docs ── */
-  var loaded = false, box = $("#docs-box");
-  function loadDocs() {
-    if (loaded) return; loaded = true;
-    var elR = $("#readme");
-    fetch("README.md").then(function (r) { if (!r.ok) throw 0; return r.text(); }).then(function (md) {
-      elR.innerHTML = window.marked ? marked.parse(md) : "<pre>" + md.replace(/</g, "&lt;") + "</pre>";
-      $$("img[src^='docs/']", elR).forEach(function (im) { im.src = im.getAttribute("src").slice(5); });
-      $$("a[href^='http']", elR).forEach(function (a) { a.rel = "noopener"; a.target = "_blank"; });
-      if (ST) ST.refresh();
-    }).catch(function () {
-      loaded = false;
-      elR.innerHTML = '<p class="state">The guide couldn\'t load here. <a href="https://github.com/' + repo + '#readme">Read it on GitHub</a>.</p>';
-    });
-  }
-  box.addEventListener("toggle", function () { if (box.open) loadDocs(); if (ST) ST.refresh(); });
-  if (location.hash === "#docs") box.open = true;
-
   /* ── no GSAP (CDN blocked): static but complete ── */
   if (!G || !ST) {
     window.addEventListener("scroll", function () { onScroll(window.scrollY); }, { passive: true });
@@ -1138,7 +1119,6 @@
       var target = id.length > 1 ? document.querySelector(id) : document.body;
       if (!target) return;
       e.preventDefault();
-      if (id === "#docs") box.open = true;
       if (lenis) lenis.scrollTo(id === "#top" ? 0 : target, { offset: -70, duration: 1.4 });
       else target.scrollIntoView();
       if (target.hasAttribute("tabindex")) target.focus({ preventScroll: true });

@@ -1,0 +1,702 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Forge Docs</title>
+<meta name="description" content="The Forge guide: install, first run, commands, failover, approvals, skills, team mode, sandbox, GitHub, MCP, config and environment variables.">
+<meta name="theme-color" content="#0a0912">
+<link rel="icon" href="media/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="media/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Silkscreen&family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0912; --bg-2: #0e0c18; --panel: #14111f; --line: #221d36; --line-2: #3b3460;
+    --text: #ece9f7; --muted: #a19bbd; --dim: #6f6990; --accent: #ff4fd8; --cyan: #3ef0ff;
+    --body: "Geist", system-ui, sans-serif; --mono: "JetBrains Mono", ui-monospace, monospace; --pixel: "Silkscreen", monospace;
+    --top: 60px; --side: 280px; --toc: 220px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-padding-top: calc(var(--top) + 20px); scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.7 var(--body); -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* top bar */
+  .bar { position: fixed; inset: 0 0 auto 0; height: var(--top); z-index: 30; display: flex; align-items: center; gap: 18px; padding: 0 22px;
+    background: #0a0912e6; backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+  .logo { font: 400 18px var(--pixel); letter-spacing: .18em; color: var(--accent); text-shadow: 0 0 14px #ff4fd880; }
+  .logo:hover { text-decoration: none; }
+  .crumb { font: 13px var(--mono); color: var(--dim); }
+  .crumb b { color: var(--muted); font-weight: 600; }
+  .bar .sp { flex: 1; }
+  .bar nav a { color: var(--muted); font-size: 14px; margin-left: 18px; }
+  .bar nav a:hover { color: var(--text); text-decoration: none; }
+  .bar .btn { background: var(--accent); color: #14001a; font-weight: 600; padding: 7px 14px; border-radius: 8px; }
+  .menu { display: none; background: none; border: 1px solid var(--line-2); color: var(--text); border-radius: 8px; padding: 5px 10px; font: 13px var(--mono); cursor: pointer; }
+
+  /* sidebar — GSAP-docs style: groups, then indented children on a guide line */
+  .side { position: fixed; top: var(--top); bottom: 0; left: 0; width: var(--side); overflow-y: auto; padding: 22px 14px 40px 22px;
+    border-right: 1px solid var(--line); background: var(--bg-2); scrollbar-width: thin; scrollbar-color: var(--line-2) transparent; }
+  .side .search { width: 100%; margin-bottom: 18px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--bg);
+    color: var(--text); font: 13px var(--mono); outline: none; }
+  .side .search:focus { border-color: var(--accent); }
+  .side .label { font: 11px var(--mono); color: var(--dim); letter-spacing: .14em; text-transform: uppercase; margin: 4px 0 8px 10px; }
+  .side ul { list-style: none; margin: 0; padding: 0; }
+  .side .grp { margin-bottom: 2px; }
+  .side a { display: block; color: var(--muted); font-size: 14px; line-height: 1.35; padding: 6px 10px; border-radius: 6px; }
+  .side a:hover { color: var(--text); background: #ffffff08; text-decoration: none; }
+  .side a.top { color: var(--text); font-weight: 500; }
+  .side .sub { margin: 2px 0 8px 14px; padding-left: 10px; border-left: 1px solid var(--line-2); }
+  .side .sub a { font-size: 13.5px; padding: 5px 10px; }
+  .side a.on { color: var(--accent); background: #ff4fd814; }
+  .side .sub a.on { box-shadow: -11px 0 0 -9px var(--accent); }
+  .side .hide { display: none; }
+
+  /* content */
+  main { margin-left: var(--side); margin-right: var(--toc); padding: calc(var(--top) + 40px) 56px 120px; }
+  .inner { max-width: 780px; margin: 0 auto; }
+  .eyebrow { font: 12px var(--mono); color: var(--cyan); letter-spacing: .2em; text-transform: uppercase; }
+  h1 { font-size: clamp(34px, 4vw, 48px); line-height: 1.1; margin: 10px 0 14px; letter-spacing: -.02em; }
+  .intro { color: var(--muted); font-size: 18px; margin: 0 0 18px; }
+  .doc { padding-top: 34px; margin-top: 34px; border-top: 1px solid var(--line); }
+  h2 { font-size: 30px; line-height: 1.2; margin: 0 0 16px; letter-spacing: -.01em; position: relative; }
+  h3 { font-size: 21px; margin: 40px 0 10px; position: relative; color: var(--text); }
+  .anchor { position: absolute; left: -24px; color: var(--dim); opacity: 0; font-weight: 400; }
+  h2:hover .anchor, h3:hover .anchor { opacity: 1; text-decoration: none; }
+  p, li { color: #d6d2e8; }
+  .lead { color: var(--muted); margin-top: -4px; font-style: italic; }
+  ul, ol { padding-left: 22px; }
+  li { margin: 4px 0; }
+  li::marker { color: var(--accent); }
+  strong { color: var(--text); }
+  code { font: .88em var(--mono); background: #ffffff0d; border: 1px solid var(--line); padding: .08em .36em; border-radius: 5px; color: #ffd1f4; }
+  pre { background: #07060d; border: 1px solid var(--line); border-left: 2px solid var(--accent); border-radius: 8px; padding: 16px 18px; overflow-x: auto; }
+  pre code { background: none; border: 0; padding: 0; color: #ece9f7; font-size: 13.5px; line-height: 1.6; }
+  .tbl { overflow-x: auto; margin: 16px 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+  th { text-align: left; font: 600 12px var(--mono); color: var(--cyan); letter-spacing: .08em; text-transform: uppercase; padding: 8px 12px; border-bottom: 1px solid var(--line-2); }
+  td { padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; color: #d6d2e8; }
+  tr:hover td { background: #ffffff05; }
+  img { max-width: 100%; height: auto; border-radius: 8px; }
+  blockquote { margin: 16px 0; padding: 4px 18px; border-left: 2px solid var(--cyan); color: var(--muted); }
+  hr { border: 0; border-top: 1px solid var(--line); margin: 30px 0; }
+  .pager { display: flex; justify-content: space-between; gap: 12px; margin-top: 60px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 14px; }
+  .foot { margin-top: 40px; color: var(--dim); font-size: 13px; }
+
+  /* right: on this page */
+  .toc { position: fixed; top: var(--top); right: 0; width: var(--toc); bottom: 0; overflow-y: auto; padding: 40px 22px 40px 10px; }
+  .toc .label { font: 11px var(--mono); color: var(--dim); letter-spacing: .14em; text-transform: uppercase; margin-bottom: 10px; }
+  .toc a { display: block; color: var(--dim); font-size: 13px; padding: 4px 0 4px 12px; border-left: 1px solid var(--line); }
+  .toc a:hover { color: var(--text); text-decoration: none; }
+  .toc a.on { color: var(--accent); border-left-color: var(--accent); }
+
+  @media (max-width: 1200px) { .toc { display: none; } main { margin-right: 0; } }
+  @media (max-width: 860px) {
+    .side { transform: translateX(-100%); transition: transform .25s; z-index: 25; width: 300px; }
+    body.open .side { transform: none; box-shadow: 30px 0 60px #000a; }
+    main { margin-left: 0; padding: calc(var(--top) + 28px) 18px 90px; }
+    .menu { display: inline-block; }
+    .crumb, .bar nav a:not(.btn) { display: none; }
+    .anchor { display: none; }
+  }
+</style>
+</head>
+<body>
+<header class="bar">
+  <button class="menu" type="button" aria-label="Open the menu" onclick="document.body.classList.toggle('open')">menu</button>
+  <a class="logo" href="./">FORGE</a>
+  <span class="crumb">/ <b>docs</b> · v0.8.1</span>
+  <span class="sp"></span>
+  <nav><a href="./">Home</a><a href="https://github.com/HSigei/forgeCLI" target="_blank" rel="noopener">GitHub</a><a href="https://github.com/HSigei/forgeCLI/releases/latest" target="_blank" rel="noopener">Releases</a><a class="btn" href="./#install">Install</a></nav>
+</header>
+
+<aside class="side" id="side">
+  <input class="search" id="q" type="search" placeholder="Filter the docs…" aria-label="Filter the docs">
+  <div class="label">Guide</div>
+  <ul id="nav">
+<li class="grp"><a class="top" href="#what-it-looks-like">What it looks like</a></li>
+<li class="grp"><a class="top" href="#install">Install</a></li>
+<li class="grp"><a class="top" href="#first-run">First run</a></li>
+<li class="grp"><a class="top" href="#at-the-prompt">At the prompt</a></li>
+<li class="grp"><a class="top" href="#how-failover-works">How failover works</a></li>
+<li class="grp"><a class="top" href="#features">Features</a><ul class="sub"><li><a href="#features--approvals">Approvals</a></li><li><a href="#features--skills">Skills</a></li><li><a href="#features--parallel-agents-and-team-mode">Parallel agents and team mode</a></li><li><a href="#features--docker-sandbox">Docker sandbox</a></li><li><a href="#features--github">GitHub</a></li><li><a href="#features--mcp-servers-and-http-apis">MCP servers and HTTP APIs</a></li><li><a href="#features--checks-after-every-edit">Checks after every edit</a></li><li><a href="#features--memory-hooks-and-project-commands">Memory, hooks and project commands</a></li><li><a href="#features--cost-and-limits">Cost and limits</a></li><li><a href="#features--the-courier-and-the-pixel-city">The courier and the pixel city</a></li><li><a href="#features--sponsor-line">Sponsor line</a></li><li><a href="#features--keys-privacy-and-where-things-are-stored">Keys, privacy and where things are stored</a></li><li><a href="#features--environment-variables">Environment variables</a></li></ul></li>
+<li class="grp"><a class="top" href="#development">Development</a></li>
+  </ul>
+</aside>
+
+<main>
+  <div class="inner">
+    <div class="eyebrow">documentation · v0.8.1</div>
+    <h1>Forge Docs</h1>
+    <p class="intro">Everything about Forge: installing it, the commands at the prompt, how failover works, approvals, skills, team mode, the sandbox, GitHub, MCP servers, and every setting.</p>
+<section class="doc" id="what-it-looks-like"><h2><a class="anchor" href="#what-it-looks-like">#</a>What it looks like</h2>
+<p>These are real screenshots from Windows Terminal. Run <code>forge</code> in any project folder:</p>
+<p><img src="media/startup.png" alt="Forge start screen: pixel-art banner, then a panel with the model, failover route, folder, approval mode and last conversation" width="100%"></p>
+<p>While it works, a courier pushes a wheelbarrow of parcels along the status line instead of a
+spinner. Skills it picks, questions it asks and its replies all appear in the chat:</p>
+<p><img src="media/working.png" alt="Forge mid-turn: two skills picked, a 'Forge asks' box with numbered options, the courier sprite and a Thinking line" width="100%"></p>
+<p align="center"><img src="media/courier.gif" alt="The courier: a kid in headphones pushing a purple wheelbarrow" width="220"></p>
+
+<p>With <code>/city on</code>, a pixel city sits above the message box and its workers act out the same
+events; a green DONE sign lights up when a turn finishes:</p>
+<p><img src="media/chat.png" alt="Forge chat: two short replies with provider, model, time and token counts, and the pixel city with a DONE sign" width="100%"></p>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>What you see</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>● Skill  web-build · picked automatically</code></td>
+<td>Forge matched your request to a skill locally (no model call) and loaded its instructions</td>
+</tr>
+<tr>
+<td><code>● Write</code> · <code>● Update</code> · <code>● Shell</code></td>
+<td>every file change and command, with a preview, a coloured diff, or the first lines of output</td>
+</tr>
+<tr>
+<td><code>◆</code></td>
+<td>Forge's reply, followed by who answered, how long it took and how many tokens it used</td>
+</tr>
+<tr>
+<td><code>? Forge asks</code></td>
+<td>a question with numbered answers; type a number or your own answer</td>
+</tr>
+<tr>
+<td><code>⚠ … → trying the next one</code></td>
+<td>a provider failed; the next one continues the same turn, nothing is lost</td>
+</tr>
+<tr>
+<td><code>Thinking… 2s · ~6.3k context · ovh · …</code></td>
+<td>what is running right now; type to queue your next message</td>
+</tr>
+<tr>
+<td>bottom bar</td>
+<td>current model, context size, approval mode, conversation title</td>
+</tr>
+</tbody>
+</table></div>
+<p>In a terminal without sixel graphics (anything older than Windows Terminal 1.22, or not
+WezTerm), the art is drawn with half-block characters instead.</p>
+<p>When a step is risky, Forge stops and asks:</p>
+<pre><code class="language-text">┌─ ? Delete C:\Users\you\projects\site\old ─────────────────────────────────┐
+│ needs your OK: deletes files                                              │
+└───────────────────────────────────────────────────────────────────────────┘
+  Allow? yes · always for this kind · no ›
+</code></pre>
+<p><code>/exit</code> prints how to get back: <code>forge -c</code> continues the conversation in that folder, and
+<code>forge -r &lt;id&gt;</code> opens it from anywhere.</p>
+<hr />
+</section>
+<section class="doc" id="install"><h2><a class="anchor" href="#install">#</a>Install</h2>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>Way</th>
+<th>Command</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>pipx (recommended)</td>
+<td><code>pipx install forgecommandline</code></td>
+</tr>
+<tr>
+<td>pip</td>
+<td><code>python -m pip install forgecommandline</code></td>
+</tr>
+<tr>
+<td>Windows exe, no Python</td>
+<td>download <code>forge-vX.Y.Z-windows-x64.zip</code> from Releases, unzip, put <code>forge.exe</code> on your PATH</td>
+</tr>
+<tr>
+<td>From source</td>
+<td><code>python -m pip install .</code> in this folder, or run <code>forge.cmd</code> directly</td>
+</tr>
+</tbody>
+</table></div>
+<p>The command is <code>forge</code> whichever way you install it.</p>
+<p><strong>Updates.</strong> Forge checks PyPI once a day in the background and shows <code>update  0.8.1 → 0.9.0 is out</code>
+on the start screen when there's a newer version. Nothing installs by itself: type <code>/update</code>
+(or run <code>forge --update</code>) to install it — it picks <code>pipx upgrade</code> or <code>pip install --upgrade</code> to match
+how you installed. On Windows Forge closes and the update finishes in a new window; your conversation
+is saved, so <code>forge -c</code> picks it up. <code>/update check</code> only checks. The <code>.exe</code> build points you to the
+new zip on Releases. Turn the daily check off with <code>FORGE_UPDATE_CHECK=0</code>.</p>
+</section>
+<section class="doc" id="first-run"><h2><a class="anchor" href="#first-run">#</a>First run</h2>
+<pre><code class="language-powershell">forge
+</code></pre>
+<p>The first interactive launch opens <code>/setup</code>, which adds a provider key. You can also paste a
+key straight into the chat (Forge recognises it, files it under the right provider and redacts
+it before anything is sent or saved) or use <code>/keys add</code>.</p>
+<p>Forge doesn't come with keys of its own: it runs on yours. Free-tier keys from Groq, NVIDIA,
+OpenRouter, Cerebras or Gemini are enough to start, and every extra key or provider you add is
+one more place to fail over to. (A few public keyless gateways, kilo, llm7 and ovh, sit at the
+very end of the chain as a last resort; they are slow and rate limited, so don't rely on them.)</p>
+<pre><code class="language-text">forge                         chat in the current folder
+forge -c                      continue the last conversation here
+forge -r [#|id]               pick a saved conversation, or jump to one
+forge &quot;fix the failing test&quot;  one prompt, then exit
+forge -m qwen/qwen3-32b       use a model for this run (or -m groq:qwen/qwen3-32b)
+forge -p openrouter           use only one provider for this run
+forge -t                      start in team mode
+forge -y                      auto-approve everything (careful)
+forge -v                      show the key rotation and failover log
+forge --status | --sessions | --version
+</code></pre>
+</section>
+<section class="doc" id="at-the-prompt"><h2><a class="anchor" href="#at-the-prompt">#</a>At the prompt</h2>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>Keys</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><kbd>Enter</kbd></td>
+<td>send</td>
+</tr>
+<tr>
+<td><kbd>Ctrl</kbd>+<kbd>J</kbd> · <kbd>Alt</kbd>+<kbd>Enter</kbd> · line ending in <code>\</code></td>
+<td>new line</td>
+</tr>
+<tr>
+<td><kbd>Ctrl</kbd>+<kbd>V</kbd></td>
+<td>paste text</td>
+</tr>
+<tr>
+<td><kbd>Alt</kbd>+<kbd>V</kbd></td>
+<td>paste an image, file or path from the clipboard as an attachment</td>
+</tr>
+<tr>
+<td><kbd>Tab</kbd></td>
+<td>complete commands, models, skills, session numbers</td>
+</tr>
+<tr>
+<td><kbd>↑</kbd> <kbd>↓</kbd></td>
+<td>history</td>
+</tr>
+<tr>
+<td><kbd>Esc</kbd> · <kbd>Ctrl</kbd>+<kbd>C</kbd></td>
+<td>stop a reply</td>
+</tr>
+<tr>
+<td><kbd>Ctrl</kbd>+<kbd>D</kbd></td>
+<td>quit</td>
+</tr>
+</tbody>
+</table></div>
+<p>The message box stays open while Forge works, so you can type the next request; it is sent
+when the current one finishes. Images go only to a model that can see them.</p>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>Commands</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/model</code> · <code>/model &lt;provider&gt; &lt;model&gt;</code> · <code>/models [provider] [filter]</code></td>
+<td>see, switch, list models</td>
+</tr>
+<tr>
+<td><code>/provider &lt;name&gt;</code> · <code>/provider auto</code></td>
+<td>pin one provider, or back to failover</td>
+</tr>
+<tr>
+<td><code>/sessions</code> · <code>/resume</code> · <code>/rename</code> · <code>/delete</code> · <code>/new</code></td>
+<td>saved conversations</td>
+</tr>
+<tr>
+<td><code>/undo</code> · <code>/plan &lt;request&gt;</code></td>
+<td>undo the last change · explore read-only, then do it</td>
+</tr>
+<tr>
+<td><code>/skills [words]</code> · <code>/skill &lt;name&gt; [request]</code> · <code>/&lt;name&gt;</code></td>
+<td>find and run skills</td>
+</tr>
+<tr>
+<td><code>/approve smart\|ask\|auto</code> · <code>/yes</code></td>
+<td>approval mode</td>
+</tr>
+<tr>
+<td><code>/parallel …</code> · <code>/team on</code> · <code>/roster</code></td>
+<td>several agents at once, coordinator mode, who's on the team</td>
+</tr>
+<tr>
+<td><code>/status</code> · <code>/balance</code> · <code>/cost</code> · <code>/doctor</code></td>
+<td>keys and rests, limits left, money spent, health</td>
+</tr>
+<tr>
+<td><code>/keys [add\|test\|remove]</code> · <code>/setup</code></td>
+<td>manage keys</td>
+</tr>
+<tr>
+<td><code>/github login\|status\|logout</code> · <code>/review</code></td>
+<td>GitHub sign-in · review the current diff</td>
+</tr>
+<tr>
+<td><code>/memory</code> · <code>/commands</code> · <code>/city</code> · <code>/ads</code> · <code>/update</code> · <code>/help</code> · <code>/exit</code></td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+</section>
+<section class="doc" id="how-failover-works"><h2><a class="anchor" href="#how-failover-works">#</a>How failover works</h2>
+<pre><code class="language-text"> your request
+      │
+      ▼
+ ┌─────────┐ 429  ┌─────────┐ timeout ┌────────────┐      ┌──────────────────┐
+ │  groq   │─────▶│ nvidia  │────────▶│ openrouter │─ … ─▶│ kilo · llm7 · ovh│
+ └─────────┘      └─────────┘         └────────────┘      └──────────────────┘
+  up to 4 keys each, the strongest available model first
+</code></pre>
+<ul>
+<li>Providers are tried in <code>FORGE_PROVIDERS</code> order, up to 4 keys each.</li>
+<li>A rate limit rests only <strong>that model on that key</strong> (60 s for per-minute limits, until UTC
+  midnight for daily ones, 1 h for 401/403). The same key keeps serving the provider's other models.</li>
+<li>A provider silent for 30 s (<code>FORGE_TIMEOUT</code>) is skipped and avoided for a while.</li>
+<li>Empty, junk or moderation replies count as failures; replies cut off at the token limit are continued.</li>
+<li>The model that starts a task keeps it. If it has to hand over, the next model gets a note
+  saying what is done and what is still open.</li>
+<li>If every model is resting, Forge waits for the first one back (up to <code>FORGE_MAX_WAIT</code>, 150 s)
+  instead of giving up.</li>
+<li>A model that says the conversation is too large is remembered; Forge stops sending it
+  conversations that big and trims old tool output if nothing else fits.</li>
+</ul>
+<p>Models are ranked by a 1–10 capability score worked out automatically from the model's name, a
+quick background check and its track record. <code>/roster</code> shows each score and why.</p>
+<hr />
+</section>
+<section class="doc" id="features"><h2><a class="anchor" href="#features">#</a>Features</h2>
+<h3 id="features--approvals"><a class="anchor" href="#features--approvals">#</a>Approvals</h3>
+<p class="lead">what runs on its own and what asks</p>
+
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Behaviour</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>smart</code> (default)</td>
+<td>edits inside the folder and ordinary commands run; deleting, moving, <code>git push</code>/<code>reset</code>, global installs, registry, killing processes, admin, piping downloads into a shell and writing outside the folder ask</td>
+</tr>
+<tr>
+<td><code>ask</code></td>
+<td>every change asks</td>
+</tr>
+<tr>
+<td><code>auto</code></td>
+<td>nothing asks (<code>forge -y</code>)</td>
+</tr>
+</tbody>
+</table></div>
+<p><code>FORGE_DENY_TOOLS</code> (comma-separated names or globs) and <code>FORGE_DENY_COMMANDS</code>
+(semicolon-separated regexes) block actions even in <code>auto</code> mode.</p>
+<h3 id="features--skills"><a class="anchor" href="#features--skills">#</a>Skills</h3>
+<p class="lead">10 built in, 30 in the library, plus any Claude Code skills you have</p>
+
+<p>A skill is a Markdown file of instructions:</p>
+<pre><code class="language-text">~/.forge/skills/&lt;name&gt;/SKILL.md      yours, every project
+./.forge/skills/&lt;name&gt;/SKILL.md      this project only
+</code></pre>
+<pre><code class="language-markdown">---
+name: lint
+description: Run the linter and fix what it reports
+---
+Run `ruff check .`, fix each issue, and run it again until it passes.
+</code></pre>
+<ul>
+<li>Built in: commit, debug, explain, init, review, run, security-review, simplify, skill-inspector, test, web-build. <code>skill-inspector</code> is adapted from <a href="https://github.com/NVIDIA/SkillSpector" target="_blank" rel="noopener">NVIDIA SkillSpector</a> (Apache-2.0): it scans a skill with <code>skillspector scan --no-llm</code> when that is installed, reads the source, and gives an APPROVE / CAUTION / REJECT verdict before you install it.</li>
+<li><code>skills/library</code>: 30 engineering skills (TDD, debugging, code review, planning, API design,
+  security, CI/CD, performance, system design…). Third-party skills are MIT-licensed; see
+  <code>skills/library/LICENSES</code>.</li>
+<li>If Claude Code is installed, its skills are copied once into <code>~/.forge/library</code>; <code>/skills sync</code>
+  refreshes the copy.</li>
+<li>Only Forge's own skills are listed to the model. It finds the rest with <code>find_skill</code>, so each
+  request stays small. <code>/skill new &lt;name&gt;</code> creates one.</li>
+</ul>
+<h3 id="features--parallel-agents-and-team-mode"><a class="anchor" href="#features--parallel-agents-and-team-mode">#</a>Parallel agents and team mode</h3>
+<pre><code class="language-text">/parallel fix the test in api/ || write docs for utils.py || list every TODO in src/
+</code></pre>
+<p>Each task gets its own agent with a copy of the conversation, starting at a different provider.
+Reports come back into the main conversation. <code>/parallel on</code> lets Forge split work by itself;
+at most <code>FORGE_MAX_AGENTS</code> (5) run at once. With <code>FORGE_WORKTREES=1</code> each agent works in its own
+git worktree under <code>.forge/worktrees/</code> on a <code>forge/agent-N-&lt;time&gt;</code> branch; merge what you want.</p>
+<p><code>/team on</code> (or <code>forge -t</code>) adds a coordinator: it does small requests itself and splits bigger
+ones between the models that suit each part, then gives you one answer saying who did what.
+<code>/roster bench</code> measures every model; <code>/team lead &lt;worker&gt;</code> picks the coordinator.</p>
+<h3 id="features--docker-sandbox"><a class="anchor" href="#features--docker-sandbox">#</a>Docker sandbox</h3>
+<p><code>FORGE_SANDBOX=docker</code> runs the model's shell commands in a container that only sees the project
+folder (mounted at <code>/work</code>). Dev-server ports are published on <code>127.0.0.1</code> only.
+<code>FORGE_SANDBOX_NET=none</code> cuts the network; <code>FORGE_SANDBOX_IMAGE</code> picks the image (default
+<code>node:22-bookworm</code>). Needs Docker Desktop running. Approval rules still apply.</p>
+<h3 id="features--github"><a class="anchor" href="#features--github">#</a>GitHub</h3>
+<ul>
+<li><code>/github login</code> shows a code to enter at github.com/login/device and keeps the token in your
+  key store; <code>/github logout</code> removes it. <code>gh auth login</code> or a token added with <code>/keys</code> also work.</li>
+<li>The <code>github_request</code> tool covers repos, branches, issues, pull requests, Actions and releases.
+  Reads are automatic, writes follow the approval mode, destructive operations always ask.</li>
+<li><code>.github/workflows/forge-issue.yml</code>: comment <code>/forge</code> on an issue (owner, members and
+  collaborators only) and Forge works on a branch and opens a pull request.</li>
+</ul>
+<h3 id="features--mcp-servers-and-http-apis"><a class="anchor" href="#features--mcp-servers-and-http-apis">#</a>MCP servers and HTTP APIs</h3>
+<p>Forge reads MCP servers from <code>~/.claude.json</code> (read-only), <code>~/.forge/mcp.json</code> and the project's
+<code>.mcp.json</code>. Servers start only when a request needs them; tools load on demand with
+<code>mcp_search</code>. Stdio and streamable HTTP are supported.</p>
+<pre><code class="language-json">{
+  &quot;mcpServers&quot;: {
+    &quot;my-service&quot;: {
+      &quot;type&quot;: &quot;streamable-http&quot;,
+      &quot;url&quot;: &quot;https://api.example.test/mcp&quot;,
+      &quot;headers&quot;: {&quot;Authorization&quot;: &quot;Bearer {{env:MY_SERVICE_TOKEN}}&quot;}
+    }
+  }
+}
+</code></pre>
+<p><code>http_request</code> handles methods, headers, JSON/form bodies, uploads, downloads and pagination.
+Credentials written as <code>{{env:NAME}}</code> are filled in at send time and redacted from replies.
+<code>openapi_import</code> loads an OpenAPI 3 spec; <code>openapi_search</code> pulls in only the operations needed.</p>
+<h3 id="features--checks-after-every-edit"><a class="anchor" href="#features--checks-after-every-edit">#</a>Checks after every edit</h3>
+<p><code>.py</code>, <code>.json</code> and JavaScript (including inline page scripts) are syntax-checked right after a
+write; a failure goes straight back to the model. <code>browser_check</code> opens a localhost page,
+reports console errors and saves a screenshot to <code>~/.forge/screenshots</code>. When a turn builds a
+page or starts a server, Forge opens it in your browser (<code>FORGE_AUTO_OPEN=0</code> to stop).</p>
+<h3 id="features--memory-hooks-and-project-commands"><a class="anchor" href="#features--memory-hooks-and-project-commands">#</a>Memory, hooks and project commands</h3>
+<ul>
+<li><code>FORGE.md</code>, <code>CLAUDE.md</code> or <code>AGENTS.md</code> in the project are read automatically; <code>/skill init</code> writes one.</li>
+<li>Notes saved with <code>memory</code> live in <code>~/.forge/memory/</code>, per project or shared; <code>/memory</code> shows them.</li>
+<li><code>.forge/commands/&lt;name&gt;.md</code> becomes <code>/&lt;name&gt;</code>, with <code>$ARGUMENTS</code> for what you type after it.</li>
+<li>Hooks live only in <code>~/.forge/hooks.json</code> (never in a repo): <code>pre_tool</code> hooks get JSON on stdin
+  and can block a tool with a non-zero exit; <code>post_tool</code> hooks run after. Argv arrays, no shell,
+  5-second timeout.</li>
+</ul>
+<h3 id="features--cost-and-limits"><a class="anchor" href="#features--cost-and-limits">#</a>Cost and limits</h3>
+<p><code>/cost</code> shows what this session's tokens would cost per model; free tiers show as free and
+unknown prices say so. Correct prices in <code>~/.forge/prices.json</code>:
+<code>{"openai:gpt-4o-mini": [0.15, 0.6]}</code> (dollars per million input, output tokens).
+<code>/balance</code> shows requests and tokens left per provider, and OpenRouter credits.</p>
+<h3 id="features--the-courier-and-the-pixel-city"><a class="anchor" href="#features--the-courier-and-the-pixel-city">#</a>The courier and the pixel city</h3>
+<p>Instead of a spinner, a pixel-art courier pushes a wheelbarrow of parcels along the status line,
+following real events: loading while the model thinks, waiting at the glowing door while a tool
+runs, dimmed during rate limits, a green door when done, spilled parcels when it fails. In sixel
+terminals (Windows Terminal 1.22+, WezTerm) it is drawn in real pixels; elsewhere in half-blocks.</p>
+<p><code>/city on</code> (or <code>FORGE_SCENE=city</code>) adds a pixel city above the message box where tiger-cub
+workers act out the same events. <code>/city calm</code> stills the motion, <code>/city off</code> hides it.
+<code>FORGE_COURIER=off</code>, <code>FORGE_MOTION=reduce</code>, <code>FORGE_GRAPHICS=sixel|blocks|plain</code>.</p>
+<h3 id="features--sponsor-line"><a class="anchor" href="#features--sponsor-line">#</a>Sponsor line</h3>
+<p class="lead">off unless a server is configured</p>
+
+<p>One optional faint line under the working status, shown only after a task has run a few seconds — this is how Forge stays free. It is never shown in
+the first 7 days, in CI, for one-shot prompts, or when output is piped. The request carries only
+the Forge version, a random install id (<code>/ads reset</code> makes a new one) and which line was last
+shown — no prompts, code, file names or keys. It also counts the install as used that day,
+including in the first week (no line is shown then). Lines are signed by the server and stripped
+of escape codes; links go through the server so clicks are counted. <code>/ads off</code> or <code>FORGE_ADS=0</code>
+turns all of it off; Forge works the same either way. Details in <a href="https://github.com/HSigei/forgeCLI/blob/main/PRIVACY.md" target="_blank" rel="noopener">PRIVACY.md</a>.</p>
+<h3 id="features--keys-privacy-and-where-things-are-stored"><a class="anchor" href="#features--keys-privacy-and-where-things-are-stored">#</a>Keys, privacy and where things are stored</h3>
+<ul>
+<li>Keys are read only from Forge's own <code>.env</code>, <code>~/.forge/.env</code> or its key store, never from the
+  project you are working in. The OS keychain is used when available (<code>FORGE_KEYRING=0</code> to opt out).</li>
+<li>Pasted keys are redacted before the model call, the saved session and input history. Logs show
+  only the last 4 characters.</li>
+</ul>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>Path</th>
+<th>Holds</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>~/.forge/sessions/</code></td>
+<td>conversations, saved after every turn</td>
+</tr>
+<tr>
+<td><code>~/.forge/config.json</code></td>
+<td>chosen models and provider</td>
+</tr>
+<tr>
+<td><code>~/.forge/keys.json</code></td>
+<td>keys when no keychain is available</td>
+</tr>
+<tr>
+<td><code>~/.forge/state.json</code> · <code>usage.json</code></td>
+<td>key rests and health, keyed by one-way hashes</td>
+</tr>
+<tr>
+<td><code>~/.forge/library/</code></td>
+<td>Forge's copy of Claude Code skills</td>
+</tr>
+<tr>
+<td><code>~/.forge/history</code></td>
+<td>your typed input, keys redacted</td>
+</tr>
+</tbody>
+</table></div>
+<p>You are responsible for following each provider's terms for the keys you add.</p>
+<h3 id="features--environment-variables"><a class="anchor" href="#features--environment-variables">#</a>Environment variables</h3>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Default</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>&lt;NAME&gt;_API_KEYS</code></td>
+<td></td>
+<td>comma-separated keys, e.g. <code>GROQ_API_KEYS=gsk_…,gsk_…</code></td>
+</tr>
+<tr>
+<td><code>&lt;NAME&gt;_MODELS</code></td>
+<td></td>
+<td>extra models per provider for the roster</td>
+</tr>
+<tr>
+<td><code>FORGE_PROVIDERS</code></td>
+<td></td>
+<td>failover order</td>
+</tr>
+<tr>
+<td><code>FORGE_APPROVAL</code></td>
+<td><code>smart</code></td>
+<td><code>smart</code> · <code>ask</code> · <code>auto</code></td>
+</tr>
+<tr>
+<td><code>FORGE_TIMEOUT</code></td>
+<td><code>30</code></td>
+<td>seconds of silence before a provider is skipped</td>
+</tr>
+<tr>
+<td><code>FORGE_MAX_WAIT</code></td>
+<td><code>150</code></td>
+<td>seconds to wait when every model is resting</td>
+</tr>
+<tr>
+<td><code>FORGE_ROUTING</code></td>
+<td></td>
+<td><code>speed</code> for fastest-first instead of strongest-first</td>
+</tr>
+<tr>
+<td><code>FORGE_KEYLESS</code></td>
+<td><code>1</code></td>
+<td><code>0</code> drops kilo, llm7 and ovh</td>
+</tr>
+<tr>
+<td><code>FORGE_TEAM</code> · <code>FORGE_COORDINATOR</code></td>
+<td></td>
+<td>start in team mode · fix the coordinator</td>
+</tr>
+<tr>
+<td><code>FORGE_MAX_AGENTS</code> · <code>FORGE_WORKTREES</code></td>
+<td><code>5</code> · <code>0</code></td>
+<td>parallel agents</td>
+</tr>
+<tr>
+<td><code>FORGE_SANDBOX</code> · <code>_NET</code> · <code>_IMAGE</code></td>
+<td></td>
+<td>Docker sandbox</td>
+</tr>
+<tr>
+<td><code>FORGE_AUTO_SKILL</code> · <code>FORGE_AUTO_OPEN</code> · <code>FORGE_AUTO_BENCH</code></td>
+<td><code>1</code></td>
+<td>automatic behaviours</td>
+</tr>
+<tr>
+<td><code>FORGE_SCENE</code> · <code>FORGE_MOTION</code> · <code>FORGE_GRAPHICS</code> · <code>FORGE_COURIER</code></td>
+<td></td>
+<td>visuals</td>
+</tr>
+<tr>
+<td><code>FORGE_ADS</code></td>
+<td></td>
+<td><code>0</code> turns the sponsor line off</td>
+</tr>
+<tr>
+<td><code>FORGE_GITHUB_CLIENT_ID</code></td>
+<td></td>
+<td>OAuth App for <code>/github login</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>See <code>.env.example</code> for the full list.</p>
+<hr />
+</section>
+<section class="doc" id="development"><h2><a class="anchor" href="#development">#</a>Development</h2>
+<pre><code class="language-powershell">python -m pip install -r requirements.txt
+python tests/test_failover.py        # offline, against fake servers; ends with ALL TESTS PASSED
+</code></pre>
+<p>GitHub Actions runs the suite on every push. A <code>v*</code> tag runs it again, publishes to PyPI with
+trusted publishing (no token stored) and attaches a standalone <code>forge.exe</code> to a GitHub Release.
+<code>packaging/</code> has the Scoop manifest and winget and Homebrew notes.</p>
+</section>
+    <p class="foot">© 2026 HK Labs · <a href="https://github.com/HSigei/forgeCLI/blob/main/LICENSE" target="_blank" rel="noopener">Apache-2.0</a> · <a href="https://github.com/HSigei/forgeCLI/blob/main/TERMS.md" target="_blank" rel="noopener">Terms</a> · <a href="https://github.com/HSigei/forgeCLI/blob/main/PRIVACY.md" target="_blank" rel="noopener">Privacy</a> · <a href="https://github.com/HSigei/forgeCLI/blob/main/DISCLAIMER.md" target="_blank" rel="noopener">Disclaimer</a> · <a href="https://github.com/HSigei/forgeCLI/edit/main/README.md" target="_blank" rel="noopener">Edit this page</a></p>
+  </div>
+</main>
+
+<aside class="toc" aria-label="On this section"><div class="label">On this section</div><div id="toc"></div></aside>
+
+<script>
+(function () {
+  var links = [].slice.call(document.querySelectorAll("#nav a"));
+  var secs = [].slice.call(document.querySelectorAll(".doc"));
+  var toc = document.getElementById("toc");
+  var current = null;
+
+  function buildToc(sec) {
+    if (sec === current) return; current = sec;
+    var hs = sec ? sec.querySelectorAll("h3[id]") : [];
+    toc.innerHTML = [].map.call(hs, function (h) {
+      return '<a href="#' + h.id + '">' + h.textContent.replace(/^#/, "") + "</a>";
+    }).join("") || '<a href="#' + (sec ? sec.id : "") + '">' + (sec ? sec.querySelector("h2").textContent.replace(/^#/, "") : "") + "</a>";
+  }
+
+  // scroll spy: highlight the section and sub-entry you are reading
+  function spy() {
+    var y = window.scrollY + 120, sec = secs[0], sub = null;
+    secs.forEach(function (s) { if (s.offsetTop <= y) sec = s; });
+    if (sec) [].forEach.call(sec.querySelectorAll("h3[id]"), function (h) { if (h.getBoundingClientRect().top + window.scrollY <= y) sub = h; });
+    var ids = [sec && sec.id, sub && sub.id];
+    links.forEach(function (a) { a.classList.toggle("on", ids.indexOf(a.getAttribute("href").slice(1)) >= 0); });
+    buildToc(sec);
+    [].forEach.call(toc.querySelectorAll("a"), function (a) { a.classList.toggle("on", sub && a.getAttribute("href") === "#" + sub.id); });
+  }
+  window.addEventListener("scroll", spy, { passive: true });
+  spy();
+
+  // close the mobile menu after picking a page
+  links.forEach(function (a) { a.addEventListener("click", function () { document.body.classList.remove("open"); }); });
+
+  // sidebar filter
+  document.getElementById("q").addEventListener("input", function () {
+    var q = this.value.trim().toLowerCase();
+    [].forEach.call(document.querySelectorAll("#nav .grp"), function (g) {
+      var any = false;
+      [].forEach.call(g.querySelectorAll(".sub li"), function (li) {
+        var hit = !q || li.textContent.toLowerCase().indexOf(q) >= 0; li.classList.toggle("hide", !hit); any = any || hit;
+      });
+      var self = !q || g.querySelector(".top").textContent.toLowerCase().indexOf(q) >= 0;
+      if (self) [].forEach.call(g.querySelectorAll(".sub li"), function (li) { li.classList.remove("hide"); });
+      g.classList.toggle("hide", !(self || any));
+    });
+  });
+})();
+</script>
+</body>
+</html>
