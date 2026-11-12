@@ -1,0 +1,8 @@
+prompt: |
+  people.csv is messy (extra spaces, mixed-case emails, blank lines, duplicate people by email, ages written as
+  text or missing). Write clean.py that reads it and writes people_clean.csv with columns name,email,age:
+  trimmed names, lowercase emails, one row per email (keep the first), age as an integer or empty, sorted by
+  name. Run it so people_clean.csv exists.
+timeout: 900
+protect:
+  - "people.csv"

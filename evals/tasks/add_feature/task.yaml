@@ -1,0 +1,8 @@
+prompt: |
+  Add a `--json` flag to the existing `python bank.py` CLI so `python bank.py balance --json` prints
+  {"balance": <number>} and `python bank.py history --json` prints a JSON list of {"type","amount"} objects.
+  Without --json the output must stay exactly as it is. Keep the existing tests passing (don't change them)
+  and add tests for the new flag.
+timeout: 900
+protect:
+  - "tests/test_bank.py"

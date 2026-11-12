@@ -313,7 +313,7 @@ def render_card(console, lines: list, pad: int = 1) -> bool:
 #
 #      ▄▀▀▀▄       █▀▀ █▀█ █▀█ █▀▀ █▀▀
 #     (  cub  )    BUILD · DEPLOY · SCALE
-#      ▀▄▄▄▀       v0.8.6  multi-model coding agent
+#      ▀▄▄▄▀       v0.8.7  multi-model coding agent
 #                  → model     …
 #                  → routing   …
 

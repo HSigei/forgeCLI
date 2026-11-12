@@ -58,6 +58,15 @@ SCHEMAS = [
          "ignore_case": {"type": "boolean"}}, ["pattern"]),
     _fn("repo_map", "List definitions and source locations in a project folder. Use for codebase structure.",
         {"path": {"type": "string"}}, []),
+    _fn("code_graph", "Ask the project's code graph (built in, from graphify: files, classes, functions and "
+        "the calls/imports between them; built and refreshed automatically, no model needed). Use it before "
+        "reading many files: action=overview for the main parts and hubs; query for 'where/how does X happen'; "
+        "explain for one symbol and its connections; path for how A reaches B; affected for what depends on X "
+        "(what a change could break). Then read only the files it points to.",
+        {"action": {"type": "string", "enum": ["overview", "query", "explain", "path", "affected"]},
+         "target": {"type": "string", "description": "question, or function/class/file name"},
+         "target2": {"type": "string", "description": "second name, for action=path"},
+         "path": {"type": "string", "description": "project folder (default: current)"}}, ["action"]),
     _fn("run_shell", "Run a shell command and return its output and exit code. For anything that keeps "
         "running (web servers, dev servers, watchers, GUI apps) set background=true: it starts, you get the "
         "first output and any local URL, and you can carry on. A command that turns out to be a server is "
@@ -983,6 +992,17 @@ class Tools:
                     "Choose a specific project folder instead.")
         self.ui.peek("search", f"repository map in {base}")
         return repomap.build(base)
+
+    def t_code_graph(self, action="overview", target="", target2="", path="."):
+        from . import codegraph
+
+        base = self._path(path)
+        if _broad_search_root(base):
+            return "Error: refusing to map a home or drive root. Choose a specific project folder instead."
+        if not base.is_dir():
+            return f"Error: folder not found: {base}"
+        self.ui.peek("search", f"code graph {action}" + (f": {target}" if target else "") + f" in {base}")
+        return codegraph.answer(base, action, target, target2)
 
     def t_run_shell(self, command, cwd=None, timeout=120, background=False):
         where = self._path(cwd)

@@ -1,0 +1,5 @@
+prompt: |
+  Make a one-page website for a bakery called "Crumb & Co" in index.html with a separate styles.css.
+  It needs a header with the name, a menu section listing at least 4 items with prices, opening hours,
+  and a contact form (name, email, message, submit). It must work on phones (responsive). No frameworks.
+timeout: 900

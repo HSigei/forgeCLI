@@ -132,7 +132,8 @@ _TEST_PASS = re.compile(
     r"\b(?:[1-9]\d*\s+(?:tests?\s+)?passed|[1-9]\d*\s+passing|test result:\s*ok|"
     r"100%\s+tests?\s+passed|all\s+tests?\s+passed|tests run:\s*[1-9]\d*[,;].*?"
     r"failures:\s*0[,;].*?errors:\s*0|[1-9]\d*\s+tests? completed,\s*0 failed|"
-    r"(?m:^ok\s+\S+\s+\d+(?:\.\d+)?s?\s*$)|OK\s*\(\s*[1-9]\d*\s+tests?\s*\))", re.I)
+    r"(?m:^ok\s+\S+\s+\d+(?:\.\d+)?s?\s*$)|OK\s*\(\s*[1-9]\d*\s+tests?\s*\)|"
+    r"Ran\s+[1-9]\d*\s+tests?\s+in\s+[\d.]+s\s+OK\b)", re.I)
 _TEST_FAIL = re.compile(
     r"\b[1-9]\d*\s+(?:failed|failures?|errors?)\b|\b(?:tests?|test suite)\s+failed\b|"
     r"\b0\s+(?:tests?|passed|passing)\b|\bno tests? (?:ran|found|collected)\b", re.I)
@@ -200,6 +201,86 @@ def test_succeeded(step: Step) -> bool:
             _TEST_PASS.search(step.out) is not None and _TEST_FAIL.search(step.out) is None)
 
 
+# Code that is meant to be run by a person (a server, a CLI, a page), not only imported by tests.
+_RUNNABLE = re.compile(
+    r"asyncio\.start_server|socketserver|\bsocket\.socket\(|\.listen\(|createServer\(|\bexpress\(\)|"
+    r"\bFastAPI\(|\bFlask\(|uvicorn\.run|app\.run\(|http\.server|ListenAndServe|HttpListener|"
+    r"if __name__ == ['\"]__main__['\"]|argparse\.ArgumentParser|\bclick\.command|\btyper\.Typer|"
+    r"func main\(\)|fn main\(\)|<html|<!doctype html", re.I)
+_DONE = re.compile(r"\b(done|finished|complete[ds]?|ready|built|implemented|working|works|all set|"
+                   r"fully functional|production[- ]ready)\b", re.I)
+_RUN_COMMAND = re.compile(
+    r"\b(python[\d.]*(?:\.exe)?|py|node|deno|bun|go run|cargo run|dotnet run|java|ruby|php|"
+    r"npm (?:run )?(?:start|dev|serve|preview)|pnpm (?:run )?(?:start|dev)|yarn (?:start|dev)|npx|"
+    r"curl|wget|Invoke-WebRequest|Invoke-RestMethod|iwr|irm|redis-cli|nc|telnet)\b|^\s*\.[\\/]", re.I)
+
+
+def _runnable_changes(ledger: Ledger, root: pathlib.Path) -> list[str]:
+    """Files written or edited this turn that something would run (not tests, not docs)."""
+    out = []
+    for s in ledger.steps:
+        if not s.ok or s.name not in ("write_file", "edit_file", "apply_patch"):
+            continue
+        path = s.args.get("path", "")
+        if not path or re.search(r"(^|[\\/])(tests?|spec|__tests__)[\\/]|(^|[\\/])test_|_test\.|\.test\.|"
+                                 r"\.spec\.|\.(md|txt|json|ya?ml|toml|lock|cfg|ini)$", path, re.I):
+            continue
+        f = pathlib.Path(path)
+        f = f if f.is_absolute() else root / f
+        try:
+            text = f.read_text(encoding="utf-8", errors="replace")[:200_000]
+        except OSError:
+            continue
+        if _RUNNABLE.search(text) and path not in out:
+            out.append(path)
+    return out
+
+
+def last_run(ledger: Ledger):
+    """After the last change, the latest step that ran the thing itself (not only its unit tests), or None."""
+    found = None
+    for s in ledger.after_change():
+        if s.name in ("open_url", "http_request", "browser", "screenshot", "process"):
+            found = s
+        elif s.name == "run_shell":
+            cmd = s.args.get("command", "")
+            if (_RUN_COMMAND.search(cmd) and not _TEST_COMMAND.search(cmd) and not _TESTISH.search(cmd)
+                    and not _BUILD_COMMAND.search(cmd)
+                    and not re.search(r"\b(pip|npm|pnpm|yarn|uv)\s+(install|add|i)\b", cmd)
+                    and not re.search(r"\bpython[\d.]*(?:\.exe)?\s+-(?:c|m\s+(?:py_compile|compileall|pip))\b", cmd)):
+                found = s
+    return found
+
+
+def ran_it(ledger: Ledger) -> bool:
+    return last_run(ledger) is not None
+
+
+def unrun_build(answer: str, ledger: Ledger, root: pathlib.Path) -> str:
+    """The kvlite gap: unit tests pass, the answer says done, but the server/CLI/page was never used.
+    Returns the problem, or ''."""
+    if not ledger.steps or ledger.last_change() < 0:
+        return ""
+    if not any(_DONE.search(sent) and not _HEDGE.search(sent) for sent in _sentences(answer)):
+        return ""
+    files = _runnable_changes(ledger, root)
+    if not files:
+        return ""
+    run = last_run(ledger)
+    if run is not None:
+        if run.ok and not re.search(r"Traceback \(most recent call last\)|\b\w*(Error|Exception):|"
+                                    r"Connection ?refused|ECONNREFUSED|\bpanic:|Unhandled", run.out or ""):
+            return ""
+        tail = " ".join((run.out or "").strip().splitlines()[-3:])[:300]
+        return ("you say it's done, but the last time you ran it, it failed"
+                + (": " + tail if tail else "") + ". Fix that and run it again, or say plainly what still fails")
+    names = ", ".join(pathlib.Path(f).name for f in files[:4])
+    return ("you say it's done, but after your last change you never ran what you built (" + names + "); "
+            "passing unit tests don't show it works for a user. Run it the way a user would: start the "
+            "server in the background and talk to it with a real client, run the CLI with real arguments, "
+            "or open the page. Then report what actually happened, including anything that failed")
+
+
 def check_claims(answer: str, ledger: Ledger, root: pathlib.Path) -> list[str]:
     """Problems with the answer: claims no tool backed up, and files that don't exist."""
     problems: list[str] = []
@@ -256,6 +337,9 @@ def check_claims(answer: str, ledger: Ledger, root: pathlib.Path) -> list[str]:
         if paths and not any(_written_this_turn(path, ledger, root) for path in paths):
             problems.append("you said you created a file, but no successful file write for its path "
                             "happened this turn: " + ", ".join(paths[:5]))
+    unrun = unrun_build(answer, ledger, root)
+    if unrun:
+        problems.append(unrun)
     missing = missing_paths(answer, ledger, root)
     if missing:
         problems.append("these files you mention don't exist: " + ", ".join(missing[:5]))

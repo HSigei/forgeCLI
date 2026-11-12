@@ -2621,6 +2621,49 @@ components:
         assert "no arguments" in tt.execute("edit_file", "{}")
     print("ok  edit-miss wording, apply_patch hands over to edit_file, empty calls explained")
 
+    # 0.8.7: "done" needs the thing itself run, not only its unit tests (the kvlite false finish).
+    with _tf.TemporaryDirectory() as d:
+        srv = pathlib.Path(d, "server.py")
+        srv.write_text("import asyncio\nasync def main():\n    await asyncio.start_server(h, '127.0.0.1', 6399)\n",
+                       encoding="utf-8")
+        L = guardsmod.Ledger()
+        L.add("write_file", {"path": str(srv)}, "Wrote 3 lines")
+        L.add("run_shell", {"command": "python -m pytest tests -q"}, "exit code 0\n42 passed in 0.8s")
+        done = "Done. kvlite is built and all 42 tests pass."
+        probs = guardsmod.check_claims(done, L, pathlib.Path(d))
+        assert any("never ran what you built" in p for p in probs), probs
+        L.add("run_shell", {"command": "python demo.py"},
+              "exit code 1\nTraceback (most recent call last):\nConnectionRefusedError: [WinError 10061]")
+        probs = guardsmod.check_claims(done, L, pathlib.Path(d))
+        assert any("last time you ran it, it failed" in p and "ConnectionRefused" in p for p in probs), probs
+        L.add("run_shell", {"command": "python demo.py"}, "exit code 0\nPING -> PONG\nSET/GET -> bar")
+        assert not any("ran" in p for p in guardsmod.check_claims(done, L, pathlib.Path(d)))
+        # Not a claim of done, or nothing runnable changed: no complaint.
+        L2 = guardsmod.Ledger(); L2.add("write_file", {"path": str(srv)}, "Wrote 3 lines")
+        assert not guardsmod.unrun_build("I haven't run it yet; start it with python server.py.", L2, pathlib.Path(d))
+        lib = pathlib.Path(d, "util.py"); lib.write_text("def add(a, b):\n    return a + b\n", encoding="utf-8")
+        L3 = guardsmod.Ledger(); L3.add("write_file", {"path": str(lib)}, "Wrote 2 lines")
+        assert not guardsmod.unrun_build("Done.", L3, pathlib.Path(d))
+    # unittest prints "Ran N tests in Xs" then "OK": that is a passing run (an eval caught this false bounce).
+    assert guardsmod.test_succeeded(guardsmod.Step("run_shell", {"command": "python tests/test_kv.py"}, True,
+                                                   "test_a ... ok\n----\nRan 26 tests in 0.004s\n\nOK\n"))
+    print("ok  done check: the server/CLI/page must have been run, and not failed")
+
+    # 0.8.7: code_graph is a built-in tool (graphify) with clear errors.
+    from forgecli import codegraph as _cg
+    assert any(s["function"]["name"] == "code_graph" for s in __import__("forgecli.tools", fromlist=["SCHEMAS"]).SCHEMAS)
+    with _tf.TemporaryDirectory() as d:
+        assert "needs a target" in _cg.answer(pathlib.Path(d), "explain")
+        assert "action must be" in _cg.answer(pathlib.Path(d), "bogus")
+        assert "no source files" in _cg.answer(pathlib.Path(d), "query", "x")
+        if _cg.command():
+            pathlib.Path(d, "app.py").write_text(
+                "def load(p):\n    return open(p).read()\n\ndef main():\n    print(load('x'))\n", encoding="utf-8")
+            out = _cg.answer(pathlib.Path(d), "affected", "load")
+            assert "main" in out, out
+            assert not _cg.stale(pathlib.Path(d))[0]
+    print("ok  code_graph built in (graphify), refreshed when stale")
+
     print("\nALL TESTS PASSED")
 
 

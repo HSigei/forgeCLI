@@ -25,9 +25,9 @@ from .ui import UI
 
 from concurrent.futures import ThreadPoolExecutor
 
-READ_ONLY = {"read_file", "list_dir", "glob", "grep", "repo_map", "find_skill", "web_fetch", "web_search"}   # safe to run at the same time
+READ_ONLY = {"read_file", "list_dir", "glob", "grep", "repo_map", "code_graph", "find_skill", "web_fetch", "web_search"}   # safe to run at the same time
 WORKING_TOOLS = {"read_file", "write_file", "edit_file", "run_shell", "list_dir", "glob", "grep",
-                 "repo_map", "web_fetch", "web_search", "http_request", "mcp_search", "mcp_call"}
+                 "repo_map", "code_graph", "web_fetch", "web_search", "http_request", "mcp_search", "mcp_call"}
 
 
 # Skills copied from Claude Code that only work inside Claude's own apps (desktop browser pane,
@@ -53,6 +53,9 @@ How to work:
   home directory or drive root for it. Keep recursive searches inside a specific project folder.
 - For questions about project structure or symbols, call repo_map on the project folder instead of
   recursively searching a home directory.
+- In an existing codebase, ask code_graph before reading file after file: overview for the main parts,
+  query/explain to find where something happens, affected before changing a shared function. Then read
+  only the files it points to.
 - Prefer edit_file for small changes; use write_file for new files or full rewrites.
 - Use run_shell for builds, tests, git, installs and anything else. Write commands for {settings.shell}.
   To look at files use list_dir / glob / grep / read_file, not shell commands like ls, cat, head or find.
@@ -975,6 +978,7 @@ class Agent:
             self.messages.append(attach.user_message(text, self.tools.root))
             self._turn_goal = (self._turn_goal + "\n" + text).strip()
 
+    SAVE_EVERY = 5.0  # seconds between mid-turn session saves
     STALL_NUDGE = 10   # read-only steps in a row before the model is told to act
     STALL_STOP = 18    # ... and before the turn is stopped
 
@@ -1137,6 +1141,12 @@ class Agent:
                 else:
                     break
             step += 1
+            # Save as the turn goes (at most every few seconds), not only at its end: a long turn is
+            # visible from outside and survives a closed terminal or a crash.
+            now = time.monotonic()
+            if now - getattr(self, "_saved_at", 0.0) >= self.SAVE_EVERY:
+                self._saved_at = now
+                self.save()
             if self.cancel is not None and self.cancel.is_set():
                 self.ui.warn("stopped")
                 return

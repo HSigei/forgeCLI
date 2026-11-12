@@ -20,3 +20,4 @@ MENTOR.md
 server/
 docs/README.md
 .wrangler/
+evals/.runs/

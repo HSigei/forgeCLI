@@ -1,0 +1,6 @@
+prompt: |
+  Create a Node.js command-line tool (no npm packages) in todo.js that keeps a todo list in todos.json:
+  `node todo.js add "text"`, `node todo.js list` (numbered, done ones marked [x]), `node todo.js done N`,
+  `node todo.js remove N`. Bad commands print usage to stderr and exit 1.
+timeout: 900
+needs: [node]
