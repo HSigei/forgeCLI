@@ -13,7 +13,7 @@ import threading
 import time
 from typing import Callable, Protocol
 
-from rich.console import Console
+from rich.console import Console, Group
 from rich.text import Text
 
 from . import __version__, keyvault, parallel, roster
@@ -111,13 +111,13 @@ class App:
         mode = self.agent.tools.mode
 
         def fact(label: str, value: str, style: str = "") -> Text:
-            return Text(f"{label:<9}", style="faint").append(value, style=style)
+            return Text(f"{label:<10}", style="#8a7aa8").append(value, style=style or "#e6e0f5")
 
         facts = [
-                 fact("model", self.model_label(), "bold"),
-                 fact("routing", ("pinned " if r.pinned else "") + chain, "muted"),
+                 fact("model", self.model_label()),
+                 fact("routing", ("pinned " if r.pinned else "") + chain),
                  fact("folder", os.getcwd()),
-                 fact("approval", mode, "warn" if mode == "auto" else "accent")
+                 fact("approval", mode, "bold #ff4fd8" if mode != "auto" else "warn")
                  .append({"smart": "  risky steps ask first", "ask": "  every change asks first",
                           "auto": "  nothing asks (careful)"}[mode], style="faint")]
         try:
@@ -136,29 +136,31 @@ class App:
                              .append(f"  {sess.ago(last['updated'])} · ", style="faint")
                              .append("/resume", style="accent"))
         console.print()
-        # The scene (3D voxel tiger, 3D gradient FORGE, neon city) drawn straight on the terminal
-        # background, no box: real sixel pixels where the terminal can show them, half-blocks elsewhere.
+        # The picture: tiger on the rooftop, FORGE over the neon city (scene.py). Real pixels where
+        # the terminal shows sixel images, half-blocks elsewhere; FORGE_BANNER=off skips it.
         if console.is_terminal and console.width >= 60 and os.environ.get("FORGE_BANNER", "on") != "off":
-            cols = min(console.width - 4, 110)
-            rows = 10 if console.height >= 34 else 7
             try:
-                from . import art as artmod, banner3d
+                from . import art as artmod, scene
+                cols = console.width - 2
                 if artmod.graphics(console) == "sixel":
-                    sys.stdout.write("  " + banner3d.sixel(cols, rows) + chr(10))
+                    sys.stdout.write(" " + scene.sixel(cols) + chr(10))
                     sys.stdout.flush()
                 else:
-                    console.print(Padding(Text.from_ansi(banner3d.halfblock(cols, rows)), (0, 0, 0, 2)))
+                    console.print(Padding(Text.from_ansi(scene.halfblock(cols)), (0, 0, 0, 1)))
             except Exception:
                 pass
-        console.print(Padding(logo(__version__, "multi-model coding agent · failover · team mode", facts,
-                                   picture=False), (0, 0, 0, 2)))
-        hint = Text("  ")
+        from rich.rule import Rule
+        head = uimod._gradient("forge", "#ff4fd8", "#ff7ae6").append("  ")
+        head.append(f"v{__version__}", style="bold #3ef0ff").append("  multi-model coding agent · failover · team mode")
+        hint = Text()
         for i, (key, what) in enumerate([("/help", "commands"), ("/model", "switch"), ("/balance", "limits"),
                                          ("ctrl+j", "new line"), ("esc", "stop")]):
             if i:
-                hint.append("   ")
-            hint.append(key, style="accent").append(" " + what, style="faint")
-        console.print(hint)
+                hint.append("    ")
+            hint.append(key, style="bold #ff4fd8").append(" " + what, style="muted")
+        console.print(Panel(Group(head, Rule(style="#3a1d63"), *facts, hint),
+                            box=box.ROUNDED, border_style="#7b2cff", padding=(1, 3),
+                            width=min(console.width - 2, 130)))
         console.print()
 
     def toolbar(self):

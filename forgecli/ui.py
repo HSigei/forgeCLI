@@ -232,15 +232,16 @@ def goodbye(lines: list[tuple[str, str]], animate: bool = True) -> None:
     from rich.align import Align
     from . import art as artmod
 
-    from . import banner3d
+    from . import scene
     six = None
+    pic_cols = min(90, console.width - 2)
     if console.is_terminal and artmod.graphics(console) == "sixel":
         try:
-            six = banner3d.tiger_sixel()       # the same 3D cub as the start-up scene, real pixels
+            six = scene.sixel(pic_cols)        # the same picture as the start screen, real pixels
         except Exception:
             six = None
     try:
-        cub = Text.from_ansi(banner3d.tiger_halfblock(12)) if not six else Text("")
+        cub = Text.from_ansi(scene.halfblock(pic_cols)) if not six else Text("")
     except Exception:
         cub = Text.from_ansi(artmod.mascot(24).ansi().rstrip("\n"))
 
@@ -263,8 +264,7 @@ def goodbye(lines: list[tuple[str, str]], animate: bool = True) -> None:
         except KeyboardInterrupt:
             pass
     if six:
-        tw = banner3d._load()[0][0]
-        pad = max(0, (console.width - (tw + 9) // 10) // 2)
+        pad = max(0, (console.width - scene.pick(pic_cols)[0]) // 2)
         console.print()
         sys.stdout.write(" " * pad + six + "\n")
         sys.stdout.flush()
