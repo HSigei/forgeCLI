@@ -572,6 +572,10 @@ def main():
     old = sessmod.Session(messages=[{"role": "user", "content": "build a landing page"}])
     old.save()
     app = climod.App(agent, agent.ui)
+    # The agent saves its own session as it goes; make "build a landing page" clearly the newest
+    # (timestamps are per second, so a same-second tie would make "most recent" a coin flip).
+    time.sleep(1.1)
+    old.save()
     real_input = uimod.console.input
     uimod.console.input = lambda *a, **k: ""                    # enter = most recent
     try:
