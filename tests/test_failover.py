@@ -2659,8 +2659,10 @@ components:
     with _tf.TemporaryDirectory() as d:
         assert "needs a target" in _cg.answer(pathlib.Path(d), "explain")
         assert "action must be" in _cg.answer(pathlib.Path(d), "bogus")
-        assert "no source files" in _cg.answer(pathlib.Path(d), "query", "x")
-        if _cg.command():
+        if not _cg.command():
+            assert "not installed" in _cg.answer(pathlib.Path(d), "query", "x").lower()
+        else:
+            assert "no source files" in _cg.answer(pathlib.Path(d), "query", "x")
             pathlib.Path(d, "app.py").write_text(
                 "def load(p):\n    return open(p).read()\n\ndef main():\n    print(load('x'))\n", encoding="utf-8")
             out = _cg.answer(pathlib.Path(d), "affected", "load")
