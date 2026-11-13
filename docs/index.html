@@ -294,8 +294,20 @@
   .shots { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
   .shots figure { margin: 0; }
   .shots .wide { grid-column: 1 / -1; }
-  .shot { border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; background: var(--term-bg); }
-  .shot img { width: 100%; }
+  /* screenshots: no frame. The terminal's black melts into the page (lighten blend on dark themes,
+     a soft dark pool on light ones) and every edge fades out, so they read as part of the page. */
+  .shot { position: relative; border: 0; background: none; overflow: visible; isolation: auto; }
+  .shot::before { content: ""; position: absolute; inset: 4% 8%; z-index: -1; pointer-events: none;
+    background: radial-gradient(ellipse at 50% 55%, #ff4fd822, #7a4dff14 45%, transparent 72%); filter: blur(20px); }
+  .shot img { width: 100%; display: block;
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent), linear-gradient(transparent, #000 7%, #000 86%, transparent);
+    -webkit-mask-composite: source-in;
+    mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent), linear-gradient(transparent, #000 7%, #000 86%, transparent);
+    mask-composite: intersect; }
+  [data-theme="precision"] .shot, [data-theme="editorial"] .shot, [data-theme="warm"] .shot {
+    background: radial-gradient(ellipse 62% 64% at 50% 50%, #0c0c0c 62%, transparent 100%); }
+  .shots .pair { display: grid; grid-template-columns: 1.6fr 1fr; gap: 20px; align-items: center; grid-column: 1 / -1; }
+  @media (max-width: 760px) { .shots .pair { grid-template-columns: 1fr; } }
   @media (max-width: 760px) { .shots { grid-template-columns: 1fr; } }
 
   /* ── install ── */
@@ -385,6 +397,7 @@
     .feat-track::-webkit-scrollbar, .shots::-webkit-scrollbar { display: none; }
     .feat { flex: 0 0 82%; min-height: 230px; scroll-snap-align: center; }
     .shots figure { flex: 0 0 88%; scroll-snap-align: center; }
+    .shots .pair { display: contents; }
     #features .sec-head::after, #screens .sec-head::after { content: "swipe \2192"; display: block; margin-top: 10px; font: 12px var(--mono); color: var(--dim); }
     .chain { grid-template-columns: 1fr 1fr; gap: 8px; }
     .hop { grid-template-columns: 12px 1fr; gap: 8px; padding: 10px 12px; font-size: 13px; }
@@ -478,9 +491,6 @@
     mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent); }
   .lane::after { background: linear-gradient(90deg, transparent, #3ef0ff88 15%, #3ef0ff88 85%, transparent); }
   .lane-tip, #crew .lane-tip { left: 12%; }
-  .shot { border: 0; background: transparent; border-radius: 10px; box-shadow: 0 30px 80px -40px #ff4fd855; }
-  .shot img { border-radius: 10px;
-    -webkit-mask-image: linear-gradient(#000 80%, transparent); mask-image: linear-gradient(#000 80%, transparent); }
   details.docs { border: 0; border-radius: 0; background: transparent; border-top: 1px solid var(--line-2); border-bottom: 1px solid var(--line-2); }
   .docs-link { display: inline-flex; align-items: center; gap: 10px; padding: 14px 22px; border-radius: 10px; background: var(--accent); color: #14001a; font-weight: 600; text-decoration: none; }
   .docs-link:hover { filter: brightness(1.1); text-decoration: none; }
@@ -631,9 +641,11 @@
         <h2 id="sc-h" class="display">Straight from <em>Windows Terminal.</em></h2>
       </div>
       <div class="shots">
-        <figure class="wide shot"><img src="media/working.png" width="1410" height="697" loading="lazy" alt="Forge mid-turn: two skills picked, a 'Forge asks' box with numbered options, the courier and a Thinking line"></figure>
-        <figure class="shot"><img src="media/startup.png" width="1200" height="648" loading="lazy" alt="Forge start screen with the model, failover route, folder and approval mode"></figure>
-        <figure class="shot"><img src="media/chat.png" width="1410" height="712" loading="lazy" alt="A Forge reply with provider, model, time and token counts"></figure>
+        <figure class="wide shot"><img src="media/working.webp" width="1864" height="680" loading="lazy" alt="Forge mid-turn on a resumed session: the courier pushes parcels to the door while the model writes, status bar with model, context and task"></figure>
+        <div class="pair">
+          <figure class="shot"><img src="media/startup.webp" width="1552" height="378" loading="lazy" alt="Forge start screen: the cub, the FORGE logo, model, failover route, folder, approval mode and last session"></figure>
+          <figure class="shot"><img src="media/loader.webp" width="800" height="360" loading="lazy" alt="Forge loading screen: gradient FORGE logo, build deploy scale, warming up"></figure>
+        </div>
       </div>
     </div>
   </section>
@@ -1122,7 +1134,7 @@
 
   // screenshots open like windows
   $$(".shot").forEach(function (s) {
-    G.fromTo(s, { clipPath: "inset(10% 6% 10% 6% round 12px)", y: 40 }, { clipPath: "inset(0% 0% 0% 0% round 12px)", y: 0, ease: "none", scrollTrigger: { trigger: s, start: "top 95%", end: "top 50%", scrub: true } });
+    G.fromTo(s, { opacity: 0, y: 40 }, { opacity: 1, y: 0, ease: "none", scrollTrigger: { trigger: s, start: "top 95%", end: "top 50%", scrub: true } });
   });
 
   // install: the walker delivers
