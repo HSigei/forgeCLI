@@ -121,7 +121,7 @@
   @media (max-width: 860px) { .top nav a.hide-sm { display: none; } }
 
   /* ── hero ── */
-  .hero { padding: 120px 0 64px; position: relative; isolation: isolate; }
+  .hero { padding: 120px 0 64px; position: relative; isolation: isolate; overflow-x: clip; }
   /* ShaderGradient (shadergradient.co) behind the hero: soft, slow, fades into the page */
   .hero-gradient { position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: 0; transition: opacity 1.6s ease;
     -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent); mask-image: linear-gradient(to bottom, #000 55%, transparent); }
@@ -149,32 +149,35 @@
 
   /* ── the night scene ── */
   /* No frame: the night city dissolves into the hero at every edge, like part of the page. */
-  .scene { position: relative; aspect-ratio: 16 / 11; max-height: 620px; width: 100%; isolation: isolate; }
-  .scene::before { content: ""; position: absolute; inset: -6% -10% 0; z-index: -1; pointer-events: none;
+  .scene { position: relative; aspect-ratio: 16 / 12; max-height: 700px; width: 100%; isolation: isolate; }
+  .scene::before { content: ""; position: absolute; inset: -10% -30% -12%; z-index: -1; pointer-events: none;
     background: radial-gradient(ellipse 60% 55% at 55% 78%, #962480aa, #5c167066 45%, transparent 75%);
     filter: blur(8px); }
-  .scene .layer, .scene .street { -webkit-mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent);
-    mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent); }
+  .scene .layer, .scene .street {
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 16%, #000 80%, transparent), linear-gradient(transparent, #000 10%, #000 72%, transparent);
+    -webkit-mask-composite: source-in;
+    mask-image: linear-gradient(90deg, transparent, #000 16%, #000 80%, transparent), linear-gradient(transparent, #000 10%, #000 72%, transparent);
+    mask-composite: intersect; }
   .scene .stars { -webkit-mask-image: radial-gradient(ellipse 55% 70% at 55% 40%, #000 30%, transparent 75%);
     mask-image: radial-gradient(ellipse 55% 70% at 55% 40%, #000 30%, transparent 75%); }
-  .scene .layer { position: absolute; left: -4%; width: 108%; pointer-events: none; }
-  .scene .stars { top: 0; height: 70%; }
-  .scene .far { bottom: 17%; height: 52%; }
-  .scene .near { bottom: 15%; height: 36%; }
-  .scene .street { position: absolute; left: 0; right: 0; bottom: 0; height: 15.5%; background: linear-gradient(#1a0a2acc, transparent); border-top: 2px solid #ff4fd8aa; box-shadow: 0 -6px 30px #ff4fd855; }
-  .scene .street::after { content: ""; position: absolute; left: 0; right: 0; top: 46%; height: 3px; background: repeating-linear-gradient(90deg, #3ef0ff88 0 26px, transparent 26px 60px); animation: road 1.6s linear infinite; }
+  .scene .layer { position: absolute; left: -4%; width: 134%; pointer-events: none; }
+  .scene .stars { top: -8%; height: 70%; }
+  .scene .far { bottom: 8%; height: 80%; }
+  .scene .near { bottom: 6%; height: 56%; }
+  .scene .street { position: absolute; left: -4%; right: -30%; bottom: -4%; height: 22%; background: linear-gradient(#ff4fd833, #1a0a2a99 6%, transparent); }
+  .scene .street::after { content: ""; position: absolute; left: 0; right: 0; top: 36%; height: 3px; background: repeating-linear-gradient(90deg, #3ef0ff88 0 26px, transparent 26px 60px); animation: road 1.6s linear infinite; }
   @keyframes road { to { background-position: -60px 0; } }
   .moon { position: absolute; right: 9%; top: 9%; width: 9%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff4fb, #ffc8ee 60%, #ff9fe0); box-shadow: 0 0 40px #ff9fe0aa, 0 0 120px #ff4fd855; }
-  .sign { position: absolute; right: 5%; top: 24%; font: 400 clamp(28px, 4.2vw, 72px)/1 var(--pixel); color: #ffe0f8; letter-spacing: .04em; text-shadow: 0 0 4px #fff, 0 0 12px #ff4fd8, 0 0 28px #ff4fd8, 0 0 60px #ff4fd8; user-select: none; }
+  .sign { position: absolute; z-index: 2; right: 2%; top: 30%; font: 400 clamp(28px, 4.2vw, 72px)/1 var(--pixel); color: #ffe0f8; letter-spacing: .04em; text-shadow: 0 0 4px #fff, 0 0 12px #ff4fd8, 0 0 28px #ff4fd8, 0 0 60px #ff4fd8; user-select: none; }
   .sign small { display: block; font: 600 clamp(9px, 0.9vw, 12px) var(--mono); color: var(--cyan); letter-spacing: .3em; text-shadow: 0 0 10px var(--cyan); margin-top: .7em; text-align: right; }
   /* the clerk: the illustration's own dusk fades into the night, no box around him */
-  .clerk-btn { position: absolute; left: 0; bottom: 2%; width: 54%; aspect-ratio: 1; padding: 0; border: 0; background: none; cursor: pointer; z-index: 3; }
-  .clerk-btn img, .clerk-img { width: 100%; height: 100%; display: block; object-fit: contain; transform-origin: 50% 80%; image-rendering: pixelated; }
+  .clerk-btn { position: absolute; left: -2%; bottom: 7%; width: 66%; aspect-ratio: 1445 / 1202; padding: 0; border: 0; background: none; cursor: pointer; z-index: 3; }
+  .clerk-btn img, .clerk-img { width: 100%; height: 100%; display: block; object-fit: contain; transform-origin: 50% 80%; filter: drop-shadow(0 18px 24px #0009); }
   .clerk-btn:focus-visible { outline: 2px dashed var(--cyan); outline-offset: -10%; border-radius: 50%; }
   .stamp { position: absolute; left: 33%; top: 62%; padding: 4px 10px; background: #14082ae0; border: 3px solid #ffd23f; border-radius: 6px; color: #ffd23f; font: 700 clamp(11px, 1.2vw, 15px) var(--mono); letter-spacing: .14em; transform: rotate(-12deg); text-shadow: 0 0 10px #ffd23f88; box-shadow: 0 0 14px #ffd23f55, inset 0 0 10px #ffd23f33; opacity: 0; pointer-events: none; z-index: 4; white-space: nowrap; }
-  .bubble { position: absolute; left: 6%; top: 12%; max-width: 46%; padding: 10px 14px; background: #fff8f0; color: #1a081e; font: 600 14px/1.35 var(--mono); border-radius: 14px; box-shadow: 4px 4px 0 #ff4fd8; z-index: 4; opacity: 0; pointer-events: none; }
+  .bubble { position: absolute; left: 6%; top: 0; max-width: 46%; padding: 10px 14px; background: #fff8f0; color: #1a081e; font: 600 14px/1.35 var(--mono); border-radius: 14px; box-shadow: 4px 4px 0 #ff4fd8; z-index: 4; opacity: 0; pointer-events: none; }
   .bubble::after { content: ""; position: absolute; left: 16px; bottom: -9px; border: 9px solid transparent; border-bottom: 0; border-top-color: #fff8f0; }
-  .scene-hint { position: absolute; left: 8%; bottom: 4%; font: 11px var(--mono); color: #ffffff80; letter-spacing: .1em; z-index: 4; }
+  .scene-hint { position: absolute; left: 4%; bottom: 2%; font: 11px var(--mono); color: #ffffff80; letter-spacing: .1em; z-index: 4; }
   .scene-hint::before { content: "↑ "; color: var(--cyan); }
   @media (max-width: 480px) { .bubble { font-size: 12px; left: 4%; max-width: 64%; } }
 
@@ -358,7 +361,7 @@
   /* tablets: scene as a wide band under the text */
   @media (min-width: 601px) and (max-width: 960px) {
     .scene { aspect-ratio: 16 / 9; }
-    .clerk-btn { width: 40%; }
+    .clerk-btn { width: 52%; }
     .hero-text { max-width: 640px; }
     .crew { grid-template-columns: 1fr 1fr; }
     .mood-stage { aspect-ratio: 1; }
@@ -414,7 +417,7 @@
   @media (min-width: 961px) {
     [data-theme="editorial"] .hero-grid { grid-template-columns: 1fr; gap: 44px; }
     [data-theme="editorial"] .scene { aspect-ratio: 21 / 8; }
-    [data-theme="editorial"] .clerk-btn { width: 28%; left: 4%; }
+    [data-theme="editorial"] .clerk-btn { width: 38%; left: 4%; }
     [data-theme="editorial"] .bubble { left: 6%; }
   }
 
@@ -522,7 +525,7 @@
         <svg class="layer near" id="near" viewBox="0 0 1000 200" preserveAspectRatio="none" aria-hidden="true"></svg>
         <div class="street" aria-hidden="true"></div>
         <button class="clerk-btn" id="hero-clerk" type="button" aria-label="Ask the clerk to sign off">
-          <img src="media/clerk.webp" srcset="media/clerk-640.webp 640w, media/clerk.webp 1200w" sizes="(max-width: 960px) 46vw, 30vw" width="1200" height="1200" alt="The clerk, a pixel-art tiger cub in a cap and jacket beside a stack of parcels">
+          <img src="media/clerk.webp" srcset="media/clerk-640.webp 640w, media/clerk.webp 1200w" sizes="(max-width: 960px) 46vw, 30vw" width="1200" height="998" alt="The clerk, a tiger cub in a cap and backpack signing off a stack of parcels">
         </button>
         <div class="stamp" id="stamp" aria-hidden="true">CHECKED ✓</div>
         <div class="bubble" id="bubble" role="status" aria-live="polite"></div>
@@ -591,7 +594,7 @@
       <div class="crew">
         <div class="card">
           <div class="mood-stage" id="mood-stage">
-            <img class="clerk-img" src="media/clerk-640.webp" width="640" height="640" loading="lazy" alt="The clerk signing off a parcel at the door">
+            <img class="clerk-img" src="media/clerk-640.webp" width="640" height="532" loading="lazy" alt="The clerk signing off a parcel at the door">
             <div class="clerk-slip" id="clerk-slip" role="status" aria-live="polite">✓ 3 files edited · tests pass</div>
           </div>
           <div class="card-cap">
@@ -694,7 +697,7 @@
   </section>
 
   <div class="bye">
-    <img id="bye-clerk" class="clerk-img" src="media/clerk-640.webp" width="640" height="640" loading="lazy" alt="">
+    <img id="bye-clerk" class="clerk-img" src="media/clerk-640.webp" width="640" height="532" loading="lazy" alt="">
     <h2 class="display">see you soon</h2>
     <p>forge -c continues it here · forge -r from anywhere</p>
   </div>
@@ -1054,7 +1057,7 @@
   var intro = G.timeline({ defaults: { ease: "expo.out" } });
   intro.from(".hero h1 .line > span", { yPercent: 110, duration: 1.1, stagger: 0.09 })
     .from(".lede, .hero-actions, .meta", { y: 18, opacity: 0, duration: 0.8, stagger: 0.08 }, "-=0.7")
-    .from(".scene", { clipPath: "inset(40% 20% 40% 20% round 24px)", duration: 1.3, ease: "expo.inOut" }, 0)
+    .fromTo(".scene", { opacity: 0, scale: 0.94 }, { opacity: 1, scale: 1, duration: 1.3, ease: "expo.out", clearProps: "transform" }, 0)
     .from("#far .bldg", { scaleY: 0, transformOrigin: "50% 100%", duration: 0.9, stagger: { amount: 0.4, from: "random" } }, 0.5)
     .from("#near .bldg", { scaleY: 0, transformOrigin: "50% 100%", duration: 0.9, stagger: { amount: 0.4, from: "random" } }, 0.65)
     .from(".moon", { y: 50, opacity: 0, duration: 1.2 }, 0.7)
