@@ -102,7 +102,9 @@ SCHEMAS = [
     OPENAPI_IMPORT_SCHEMA,
     OPENAPI_SEARCH_SCHEMA,
     _fn("todo", "Keep a visible checklist for multi-step work. Send the whole list each time, "
-        "marking items todo / doing / done.",
+        "marking items todo / doing / done. Call it again as soon as you finish a step, and before "
+        "your final answer no item should be left as todo or doing: mark finished ones done and "
+        "remove or explain the rest.",
         {"items": {"type": "array", "items": {"type": "object", "properties": {
             "task": {"type": "string"}, "status": {"type": "string", "enum": ["todo", "doing", "done"]}},
             "required": ["task", "status"]}}}, ["items"]),
@@ -125,6 +127,8 @@ UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like 
 
 
 _PS_PIPES = [
+    (re.compile(r"^\s*mkdir\s+-p\s+(.+?)\s*$", re.I),
+     r"New-Item -ItemType Directory -Force -Path \1 | Out-Null"),
     (re.compile(r"\|\s*head\s+-n\s*(\d+)\b"), r"| Select-Object -First \1"),
     (re.compile(r"\|\s*head\s+-(\d+)\b"), r"| Select-Object -First \1"),
     (re.compile(r"\|\s*head\s*(?=$|[;|&])"), "| Select-Object -First 10"),
@@ -1227,6 +1231,10 @@ class Tools:
 
     def t_todo(self, items):
         items = [i for i in (items or []) if isinstance(i, dict)]
+        finished = {i.get("task") for i in getattr(self, "todo_items", []) if i.get("status") == "done"}
+        for i in items:
+            if i.get("task") in finished:
+                i["status"] = "done"
         self.ui.todos(items)
         self.todo_items = items
         left = sum(i.get("status") != "done" for i in items)

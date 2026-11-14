@@ -402,6 +402,8 @@ def main():
     assert not safety.needs_ok("smart", "run_shell", root, command="npm test")
     assert safety.needs_ok("smart", "run_shell", root, command="Remove-Item build -Recurse")
     assert safety.needs_ok("smart", "run_shell", root, command="git push --force")
+    assert safety.needs_ok("smart", "run_shell", root, command="npx -y some-package") == \
+        "runs an npm package without confirmation"
     assert not safety.needs_ok("smart", "write_file", root, root / "x.py")
     assert safety.needs_ok("smart", "write_file", root, pathlib.Path(tempfile.gettempdir()).parent / "x.py") or \
         safety.inside(pathlib.Path(tempfile.gettempdir()), root)
@@ -506,9 +508,15 @@ def main():
     print("ok  all models too small -> reported at once (caller trims the conversation)")
 
     # 22. Linux pipes are rewritten for PowerShell.
-    from forgecli.tools import unixy_to_powershell
+    from forgecli.tools import Tools, unixy_to_powershell
     assert unixy_to_powershell("ls -R x | head -n 50") == "Get-ChildItem -Recurse -Name x | Select-Object -First 50"
     assert unixy_to_powershell("git status") == "git status"
+    assert unixy_to_powershell(r'mkdir -p "C:\x\y"') == \
+        r'New-Item -ItemType Directory -Force -Path "C:\x\y" | Out-Null'
+    todo_tools = Tools(UI(), "powershell")
+    todo_tools.t_todo([{"task": "step", "status": "done"}])
+    todo_tools.t_todo([{"task": "step", "status": "todo"}])
+    assert todo_tools.todo_items == [{"task": "step", "status": "done"}]
     print("ok  head/tail/grep/wc in a PowerShell command are translated")
 
     # 23. Claude Code's skills are copied into Forge and keep working without Claude Code.
@@ -1142,6 +1150,12 @@ components:
     assert guard_agent._guard(unsupported) and guard_agent.bounced
     assert guard_agent._guard(unsupported) is False and guard_agent.unverified
     assert "no test command showed a passing result" in " ".join(guard_agent.unverified)
+    todo_guard = Agent(s, UI(), router=router)
+    todo_guard.tools.todo_items = [{"task": "finish the step", "status": "doing"}]
+    todo_answer = {"content": "Done.", "provider": "fake", "model": "test"}
+    assert todo_guard._guard(todo_answer) and todo_guard.bounced
+    assert "Call the todo tool" in todo_guard.messages[-1]["content"]
+    assert not todo_guard._guard(todo_answer) and not todo_guard.unverified
     print("ok  unsupported final claims are bounced once, then marked unverified")
 
     # 41. Streamed text, reasoning and tool hints are display-only: shown live in the status area,
@@ -1401,6 +1415,11 @@ components:
         for _ in range(3):
             usage_agent._attempt_keys[("groq", "model")] = keyvault.fingerprint(health_key)
             usage_agent._event("fail", "groq", "model", "401 rejected")
+        malformed_agent = Agent(Settings(retry_rounds=0), UI(), router=router)
+        malformed_usage = UsageStore(kv_dir / "malformed-usage.json")
+        malformed_agent.tools.usage = malformed_usage
+        malformed_agent._event("fail", "groq", "model", "malformed tool call")
+        assert malformed_usage.report()[0][0] == "model:groq:model"
         health_provider = SimpleNamespace(name="groq", pool=SimpleNamespace(keys=[health_key]))
         usage_agent.router.providers = [health_provider]
         usage_app = App(usage_agent, UI())
