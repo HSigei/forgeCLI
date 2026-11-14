@@ -956,7 +956,8 @@ class Agent:
         def work():
             try:
                 box["r"] = self.router.complete(messages, self._schemas(), offset=self.offset,
-                                                prefer=self.prefer, ev=ev, on_text=live)
+                                                prefer=self.prefer, ev=ev, on_text=live,
+                                                full_messages=self.messages)
             except Exception as e:   # surfaced below
                 box["e"] = e
 

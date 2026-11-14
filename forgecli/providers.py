@@ -696,9 +696,12 @@ class Router:
         return best, who
 
     def complete(self, messages, tools, offset: int = 0,
-                 prefer: tuple[str, str] | None = None, ev=None, on_text=None) -> dict | None:
+                 prefer: tuple[str, str] | None = None, ev=None, on_text=None,
+                 full_messages: list[dict] | None = None) -> dict | None:
         """ev(kind, provider, model, detail) reports progress: try / fail / benched / wait.
-        on_text(str) receives the reply as it streams; after a 'fail' event the text so far is void."""
+        on_text(str) receives the reply as it streams; after a 'fail' event the text so far is void.
+        full_messages: the complete conversation history (uncompacted). Used for handoffs so the new
+        model sees all prior work. If None, falls back to messages."""
         rounds = self.settings.retry_rounds
         if self.strict and self.pinned:
             prefer = None           # a team worker's own model must not override the chosen one
@@ -710,7 +713,9 @@ class Router:
             self._skipped_size: list[int] = []
             r = self._stick(messages, tools, ev, on_text) if sticky else None
             if not r:
-                msgs = self._handoff(messages) if sticky and self.sticky else messages
+                # Use full_messages for handoff so the new model sees complete history
+                handoff_messages = full_messages if (full_messages and sticky and self.sticky) else messages
+                msgs = self._handoff(handoff_messages) if sticky and self.sticky else messages
                 r = self.chain_once(msgs, tools, offset, prefer, ev, on_text)
             if r:
                 if sticky:
