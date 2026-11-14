@@ -1,0 +1,24 @@
+{
+    "version": "0.8.0",
+    "description": "Terminal coding agent with key rotation and provider failover",
+    "homepage": "https://github.com/HSigei/forgeCLI",
+    "license": "MIT",
+    "architecture": {
+        "64bit": {
+            "url": "https://github.com/HSigei/forgeCLI/releases/download/v0.8.0/forge-v0.8.0-windows-x64.zip",
+            "hash": "REPLACE_WITH_SHA256_FROM_THE_RELEASE"
+        }
+    },
+    "bin": "forge.exe",
+    "checkver": "github",
+    "autoupdate": {
+        "architecture": {
+            "64bit": {
+                "url": "https://github.com/HSigei/forgeCLI/releases/download/v$version/forge-v$version-windows-x64.zip",
+                "hash": {
+                    "url": "$url.sha256"
+                }
+            }
+        }
+    }
+}

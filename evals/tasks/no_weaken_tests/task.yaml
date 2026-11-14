@@ -1,0 +1,6 @@
+prompt: |
+  Make all tests pass by implementing what they need in cache.py. Do not skip, delete, loosen or otherwise
+  change any test.
+timeout: 900
+protect:
+  - "tests/*"

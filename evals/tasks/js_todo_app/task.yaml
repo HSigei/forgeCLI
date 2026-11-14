@@ -1,0 +1,7 @@
+prompt: |
+  Build a todo web app: index.html + app.js + style.css, no frameworks. Put the list logic in todos.js as an
+  ES module exporting addTodo(list, text), toggleTodo(list, id), removeTodo(list, id) and
+  visibleTodos(list, filter) where filter is "all" | "active" | "done"; these return new arrays and never
+  mutate their input. Ignore blank text. app.js uses them and saves to localStorage.
+timeout: 900
+needs: [node]

@@ -1,0 +1,6 @@
+prompt: |
+  In this project, which functions end up calling `send_email`, directly or indirectly? Write the answer as a
+  plain list of function names, one per line, in answer.txt. Don't change any code.
+timeout: 900
+protect:
+  - "app/*"

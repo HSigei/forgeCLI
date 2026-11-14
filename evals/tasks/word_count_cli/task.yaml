@@ -1,0 +1,6 @@
+prompt: |
+  Write wc.py, a command-line tool: `python wc.py FILE...` prints, for each file, lines, words and characters
+  then the file name, and a total line when there is more than one file. `--top N` instead prints the N most
+  common words (case-insensitive, punctuation stripped) as "word count" lines. A missing file prints an error
+  to stderr and exits with code 1. Standard library only.
+timeout: 900

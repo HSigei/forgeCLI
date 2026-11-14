@@ -1,0 +1,6 @@
+prompt: |
+  Build a tiny Redis-compatible key-value server in Python, standard library only, in kv.py.
+  Run it with `python kv.py --port N` (default 6380). Speak RESP over TCP and support PING, SET key value,
+  GET key (nil bulk string when missing), DEL key (integer count), INCR key (integer reply, error if the value
+  is not an integer). Handle several clients at once. Add tests in tests/ and make them pass.
+timeout: 900

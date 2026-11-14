@@ -1,0 +1,8 @@
+prompt: |
+  report.py has one huge function. Split it into small, well-named functions (parsing, totals per region,
+  formatting) without changing what it prints. Keep `python report.py sales.csv` working and the tests passing.
+  Do not change the tests.
+timeout: 900
+protect:
+  - "tests/*"
+  - "sales.csv"

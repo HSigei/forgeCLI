@@ -1,0 +1,6 @@
+prompt: |
+  Build a small JSON REST API for notes in api.py using only the Python standard library (http.server).
+  `python api.py --port N`. Endpoints: GET /notes (list), POST /notes with {"text": ...} (returns the note with
+  an integer "id", status 201; 400 if text is missing or empty), GET /notes/<id> (404 if unknown),
+  DELETE /notes/<id> (204). Keep notes in memory.
+timeout: 900

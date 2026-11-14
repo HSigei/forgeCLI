@@ -1,0 +1,23 @@
+.env
+.env.*
+!.env.example
+__pycache__/
+*.pyc
+.pytest_cache/
+build/
+dist/
+*.egg-info/
+*.spec
+.forge/
+node_modules/
+Screenshot*.png
+
+# private working notes (kept locally, never published)
+HANDOFF.md
+MENTOR.md
+
+# the sponsor server lives in the private forge-ads-server repo
+server/
+docs/README.md
+.wrangler/
+evals/.runs/
