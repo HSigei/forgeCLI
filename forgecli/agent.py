@@ -17,6 +17,7 @@ from . import brief as briefmod
 from . import memory as memorymod
 from . import quality as qualitymod
 from . import skills as skillmod
+from . import textsafe
 from .config import Settings
 from .providers import Router
 from .sessions import Session
@@ -813,7 +814,7 @@ class Agent:
         self._repeat_steps, self._edits, self._edit_misses, self._since_fail = 0, 0, 0, None
         self.__dict__.setdefault("_tests_failing", False)
         self.__dict__.setdefault("_seen_calls", {})
-        user_text, pasted = keyvault.redact(user_text)
+        user_text, pasted = keyvault.redact(textsafe.clean(user_text))
         if pasted:
             self.take_keys(pasted)
         # "continue" (or a pasted path plus "continue") carries on the same task: keep its goal and

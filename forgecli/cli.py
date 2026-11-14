@@ -27,6 +27,7 @@ from rich.padding import Padding
 from rich.panel import Panel
 
 from . import ui as uimod
+from .textsafe import clean as _clean_text
 from .ui import UI, console, ktok, logo
 
 COMMANDS = {
@@ -86,6 +87,147 @@ Create {APP_DIR / '.env'} (or {HOME_DIR / '.env'}) with, for example:
 See .env.example for every option."""
 
 
+# Commands that lose or change something. A guess is never run for these: Forge asks first.
+RISKY_COMMANDS = {"/exit", "/quit", "/q", "/delete", "/new", "/clear", "/undo", "/yes", "/update"}
+
+
+def _ratio(a: str, b: str) -> float:
+    import difflib
+    return difflib.SequenceMatcher(None, a, b).ratio()
+
+
+def suggest_command(typed: str, builtin, others=()) -> dict:
+    """What to do with a slash command that does not exist.
+
+    builtin: Forge's own command names (and aliases), others: skills and project commands.
+    Returns {"run": name} when one built-in is clearly meant and is safe to run on a guess,
+    {"ask": [names]} with up to three suggestions otherwise, or {} when nothing is close.
+
+    - a prefix means the shortest command it starts ("/mod" -> /model, not /models)
+    - a typo means the closest by similarity, if it beats the runner-up clearly
+    - risky commands, skills and project commands are suggested, never run on a guess"""
+    word = typed.lower()
+    pool = [n for n in dict.fromkeys(builtin) if " " not in n]
+    extra = [n for n in dict.fromkeys(others) if n not in pool]
+
+    def safe(name: str) -> bool:
+        target = ALIASES.get(name, name)
+        return name not in RISKY_COMMANDS and target not in RISKY_COMMANDS
+
+    # 1) a prefix of one command, or of a command and its longer relatives
+    if len(word) >= 3:
+        pre = sorted((n for n in pool if n.startswith(word)), key=len)
+        if pre and all(n.startswith(pre[0]) for n in pre):
+            return {"run": pre[0], "how": "prefix"} if safe(pre[0]) else {"ask": [pre[0]]}
+        if pre:
+            return {"ask": pre[:3]}
+    # 2) a typo: rank everything by similarity
+    ranked = sorted(((_ratio(word, n), n) for n in pool + extra), reverse=True)
+    top = ranked[0] if ranked else (0.0, "")
+    # /model and /models are one family: being close to both is no reason to hesitate
+    second = max((r for r, n in ranked[1:] if not n.startswith(top[1]) and not top[1].startswith(n)),
+                 default=0.0)
+    if top[0] >= 0.8 and top[0] - second >= 0.08 and top[1] in pool and safe(top[1]) and len(word) >= 3:
+        return {"run": top[1], "how": "close"}
+    near = [n for r, n in ranked if r >= 0.55][:3]
+    if len(word) >= 3:
+        near += [n for n in extra + pool if n.startswith(word) and n not in near]
+    return {"ask": near[:3]} if near else {}
+
+
+def closest_word(word: str, options) -> str:
+    """The one option a typed word clearly means (prefix or small typo), else ''."""
+    word = word.lower()
+    opts = list(options)
+    if word in opts:
+        return word
+    pre = [o for o in opts if o.startswith(word)] if len(word) >= 2 else []
+    if len(pre) == 1:
+        return pre[0]
+    ranked = sorted(((_ratio(word, o), o) for o in opts), reverse=True)
+    if ranked and ranked[0][0] >= 0.75 and (len(ranked) < 2 or ranked[0][0] - ranked[1][0] >= 0.08):
+        return ranked[0][1]
+    return ""
+
+
+def resolve_model_choice(arg: str, providers, cache: dict, active: str = "") -> dict:
+    """Work out which provider and model a `/model` argument means.
+
+    providers: objects with .name, .model and .models; cache: provider name -> model ids seen with
+    /models; active: the provider in use now (wins ties when two providers offer the same id).
+    Returns {"provider", "model", "note"} on success, or {"error"} / {"choices"} when it cannot
+    decide. The provider comes from the model name, so `/model deepseek-chat` never ends up
+    renaming some other provider's model."""
+    import difflib
+    arg = (arg or "").strip()
+    by_name = {p.name.lower(): p for p in providers}
+
+    def known(p) -> list:
+        return list(dict.fromkeys([p.model, *p.models, *cache.get(p.name, [])]))
+
+    def match_in(p, wanted: str):
+        """(model, note) for `wanted` among p's known ids: exact, then one close match, else typed as is."""
+        ids = known(p)
+        low = {i.lower(): i for i in ids}
+        if wanted.lower() in low:
+            return low[wanted.lower()], ""
+        subs = [i for i in ids if wanted.lower() in i.lower()]
+        if len(subs) == 1:
+            return subs[0], f"matched {subs[0]}"
+        close = difflib.get_close_matches(wanted, ids, n=1, cutoff=0.75)
+        if close and not subs:
+            return close[0], f"matched {close[0]}"
+        return wanted, ""
+
+    if not arg:
+        return {"error": "no model given"}
+    first, _, rest = arg.partition(" ")
+    rest = rest.strip()
+    # "deepseek:deepseek-chat" / "deepseek deepseek-chat" -> explicit provider
+    if ":" in first and first.split(":", 1)[0].lower() in by_name and not rest:
+        pname, _, wanted = arg.partition(":")
+        p = by_name[pname.strip().lower()]
+        model, note = match_in(p, wanted.strip())
+        return {"provider": p, "model": model, "note": note}
+    if first.lower() in by_name:
+        p = by_name[first.lower()]
+        if not rest:
+            return {"provider": p, "model": p.model, "note": "", "switch_only": True}
+        model, note = match_in(p, rest)
+        return {"provider": p, "model": model, "note": note}
+
+    # a model on its own: find who offers it
+    low_arg = arg.lower()
+    owners: dict = {}                                    # model id -> providers that list it
+    for p in providers:
+        for i in known(p):
+            owners.setdefault(i, []).append(p)
+
+    def pick_owner(model_id: str):
+        ps = owners[model_id]
+        return next((p for p in ps if p.name == active), ps[0])
+
+    exact = [i for i in owners if i.lower() == low_arg]
+    if exact:
+        return {"provider": pick_owner(exact[0]), "model": exact[0], "note": ""}
+    subs = [i for i in owners if low_arg in i.lower()]
+    if len(subs) == 1:
+        return {"provider": pick_owner(subs[0]), "model": subs[0], "note": f"matched {subs[0]}"}
+    if len(subs) > 1:
+        return {"choices": [(pick_owner(i).name, i) for i in subs[:8]], "more": max(0, len(subs) - 8)}
+    close = difflib.get_close_matches(arg, list(owners), n=3, cutoff=0.7)
+    if len(close) == 1:
+        return {"provider": pick_owner(close[0]), "model": close[0], "note": f"matched {close[0]}"}
+    if len(close) > 1:
+        return {"choices": [(pick_owner(i).name, i) for i in close]}
+    # unknown id: a provider named in it ("deepseek-chat" -> deepseek) owns it, else the active one
+    hint = next((p for n, p in by_name.items() if n in low_arg), None)
+    prov = hint or by_name.get(active.lower()) or (providers[0] if providers else None)
+    if not prov:
+        return {"error": "no provider configured"}
+    return {"provider": prov, "model": arg, "note": "", "unlisted": True}
+
+
 class App:
     def __init__(self, agent: Agent, ui: UI):
         self.agent = agent
@@ -93,6 +235,7 @@ class App:
         self.router = agent.router
         self.prefs = load_prefs()
         self.router.pinned = self.prefs.get("pinned") if self.router.get(self.prefs.get("pinned") or "") else None
+        self.router.strict = bool(self.router.pinned and self.prefs.get("pinned_strict"))
         self.model_cache: dict[str, list[str]] = {}
 
     # header / footer --------------------------------------------------------------
@@ -226,7 +369,7 @@ class App:
         bits += [("class:tb.sep", "│"), ("class:tb.warn" if a.tools.mode == "auto" else "class:tb", f" {mode}{extra} "),
                  ("class:tb.sep", "│"), ("class:tb.dim", f" {title} ")]
         # One row, always: a footer wider than the window would wrap and grow, pushing the box up.
-        room, out = max(10, console.width - 1), []
+        room, out = max(10, _term_cols(getattr(self, "_pt_app", None)) - 1), []
         for cls, txt in bits:
             if room <= 0:
                 break
@@ -259,7 +402,19 @@ class App:
         elif self._project_command(cmd[1:], arg):
             pass
         else:
-            self.ui.error(f"unknown command {cmd} — /help lists them")
+            skills = [f"/{n}" for n in self.agent.skills]
+            project = pathlib.Path.cwd() / ".forge" / "commands"
+            project_cmds = [f"/{f.stem}" for f in project.glob("*.md")] if project.is_dir() else []
+            sug = suggest_command(cmd, [*COMMANDS, *ALIASES], [*skills, *project_cmds])
+            if sug.get("run"):
+                guess = sug["run"]
+                self.ui.info(f"assuming {ALIASES.get(guess, guess)} — you typed {cmd}")
+                return self.handle(guess + (" " + arg if arg else ""))
+            if sug.get("ask"):
+                options = " · ".join(sug["ask"])
+                self.ui.error(f"unknown command {cmd} — did you mean {options}?")
+            else:
+                self.ui.error(f"unknown command {cmd} — /help lists them")
         return True
 
     def cmd_help(self, _):
@@ -375,31 +530,41 @@ class App:
         self.ui.ok(f"deleted {sid}")
 
     def cmd_model(self, arg):
+        r = self.router
         if not arg:
-            rows = [[p.name, p.model, "◆" if p is self.router.lead() else ""] for p in self.router.providers]
+            rows = [[p.name, p.model, "◆" if p is r.lead() else ""] for p in r.providers]
             self.ui.table("models", ["provider", "model", "first"], rows, ["accent", None, "accent"])
-            self.ui.info("/model <model> sets the first provider's model · /model <provider> <model> · "
-                         "/models <provider> lists choices")
+            self.ui.info("routing: " + (f"only {r.pinned} · {r.get(r.pinned).model}" + (" (exact model)" if r.strict else "")
+                                        if r.pinned and r.get(r.pinned) else "automatic failover"))
+            self.ui.info("/model <model> picks the provider from the model name · /model <provider> [model] · "
+                         "/models <provider> lists choices · /provider auto turns failover back on")
             return
-        bits = arg.split(maxsplit=1)
-        if len(bits) == 2 and self.router.get(bits[0].lower()):
-            prov, model = self.router.get(bits[0].lower()), bits[1].strip()
-        elif self.router.get(arg.lower()):
-            p = self.router.get(arg.lower())
-            self.ui.info(f"{p.name} uses {p.model}")
+        active = r.pinned or (r.lead().name if r.lead() else "")
+        got = resolve_model_choice(arg, r.providers, self.model_cache, active)
+        if got.get("error"):
+            self.ui.error(got["error"])
             return
-        else:
-            prov, model = self.router.lead(), arg
-        if not prov:
-            self.ui.error("no provider configured")
+        if got.get("choices"):
+            rows = [[prov, mid] for prov, mid in got["choices"]]
+            self.ui.table(f"models matching '{arg}'", ["provider", "model"], rows, ["accent", None])
+            self.ui.info("be more specific: /model <provider> <model>" +
+                         (f" ({got['more']} more not shown)" if got.get("more") else ""))
             return
-        known = self.model_cache.get(prov.name)
+        prov, model = got["provider"], got["model"]
         prov.model = model
         self.prefs.setdefault("models", {})[prov.name] = model
+        # The choice is a promise: this provider and this model, nothing else, until /provider auto.
+        r.pinned, r.strict, r.sticky = prov.name, True, None
+        self.prefs["pinned"], self.prefs["pinned_strict"] = prov.name, True
         save_prefs(self.prefs)
-        self.ui.ok(f"{prov.name} now uses {model}")
-        if known and model not in known:
+        if got.get("note"):
+            self.ui.info(got["note"])
+        self.ui.ok(f"using {prov.name} · {model} only — no failover; /provider auto to undo")
+        known = self.model_cache.get(prov.name)
+        if got.get("unlisted") and known and model not in known:
             self.ui.warn(f"{model!r} is not in {prov.name}'s model list — check the spelling with /models {prov.name}")
+        elif got.get("unlisted") and not known:
+            self.ui.info(f"{model!r} is not one Forge has seen for {prov.name}; /models {prov.name} lists what it offers")
         self.ui.info("the model must support tool calling, or Forge can't touch files or run commands")
 
     def cmd_models(self, arg):
@@ -431,14 +596,21 @@ class App:
             self.ui.info(f"routing: {'pinned to ' + self.router.pinned if self.router.pinned else 'automatic failover'}"
                          f" · options: auto, {', '.join(p.name for p in self.router.providers)}")
             return
+        names = [p.name for p in self.router.providers]
+        if name not in ("auto", *names):
+            guess = closest_word(name, ["auto", *names])
+            if guess:
+                self.ui.info(f"assuming {guess} — you typed {name}")
+                name = guess
         if name == "auto":
-            self.router.pinned = None
+            self.router.pinned, self.router.strict = None, False
         elif self.router.get(name):
-            self.router.pinned = name
+            self.router.pinned, self.router.strict = name, False
         else:
             self.ui.error(f"no provider {name!r} (configured: {', '.join(p.name for p in self.router.providers)})")
             return
         self.prefs["pinned"] = self.router.pinned
+        self.prefs["pinned_strict"] = self.router.strict
         save_prefs(self.prefs)
         self.ui.ok("automatic failover across all providers" if name == "auto"
                    else f"using only {name} ({self.router.get(name).model}); /provider auto to undo")
@@ -1177,6 +1349,7 @@ class App:
     def run(self, text: str, echo: str = "") -> None:
         if echo:
             self.ui.info(f"  ↳ {echo}")
+        text = _clean_text(text)
         self.work(lambda: self.agent.run_turn(text))
 
     STOPPED = "⏹ stopped — say what to do next, or press ↑ to edit your last message"
@@ -1522,9 +1695,87 @@ def _quote_path(p: str) -> str:
     return f'"{p}"' if " " in p else p
 
 
+# --- paste pills -----------------------------------------------------------------
+# A paste longer than PASTE_PILL_OVER lines is not dumped into the box. The box shows one
+# highlighted pill, "[Pasted text #1 · 42 lines · 1,830 chars]", and the real text is kept on the
+# side and put back when the message is sent.
+
+PASTE_PILL_OVER = 10
+_PILL = r"\[Pasted text #\d+ · [^\]\n]*\]"
+_PILL_RE = re.compile(_PILL)
+_PILL_AT_END = re.compile(_PILL + r"\Z")
+_PILL_AT_START = re.compile(r"\A" + _PILL)
+
+
+def _normalize_paste(text: str) -> str:
+    return _clean_text(text).replace("\r\n", "\n").replace("\r", "\n")
+
+
+class PasteStore:
+    """Holds the text behind each pill. Keyed by the whole pill text, so a pill recalled from an
+    older session's history can never expand into a different paste that reused its number."""
+
+    def __init__(self, over: int = PASTE_PILL_OVER):
+        self.over, self.items, self.count = over, {}, 0
+
+    def wants_pill(self, text: str) -> bool:
+        return text.rstrip("\n").count("\n") + 1 > self.over
+
+    def add(self, text: str) -> str:
+        self.count += 1
+        body = text.rstrip("\n")
+        lines = body.count("\n") + 1
+        token = (f"[Pasted text #{self.count} · {lines} lines · "
+                 f"{len(body):,} chars]")
+        self.items[token] = text
+        return token
+
+    def expand(self, text: str) -> str:
+        """The message with every known pill replaced by what was pasted. A pill this store does
+        not know (typed by hand, or left over from an old session) stays as the plain text it is."""
+        return _PILL_RE.sub(lambda m: self.items.get(m.group(0), m.group(0)), text)
+
+
+def _pill_fragments(line: str) -> list:
+    """One line of the box as (style, text) fragments, with every pill marked class:pill."""
+    out, pos = [], 0
+    for m in _PILL_RE.finditer(line):
+        if m.start() > pos:
+            out.append(("", line[pos:m.start()]))
+        out.append(("class:pill", m.group(0)))
+        pos = m.end()
+    out.append(("", line[pos:]))
+    return out
+
+
+def _insert_paste(buf, text: str, store: "PasteStore | None") -> None:
+    text = _normalize_paste(text)
+    if store is not None and store.wants_pill(text):
+        buf.insert_text(store.add(text))
+    else:
+        buf.insert_text(text)
+
+
+def _delete_pill(buf, backward: bool) -> bool:
+    """Backspace / delete next to a pill removes the whole pill in one keypress."""
+    doc = buf.document
+    if backward:
+        m = _PILL_AT_END.search(doc.text_before_cursor)
+        if m:
+            buf.delete_before_cursor(len(m.group(0)))
+            return True
+    else:
+        m = _PILL_AT_START.match(doc.text_after_cursor)
+        if m:
+            buf.delete(len(m.group(0)))
+            return True
+    return False
+
+
 def _paste_clipboard(event: _PromptEvent, read_text: Callable[[], str] | None = None,
                      read_files: Callable[[], list[str]] | None = None,
-                     read_image: Callable[[], str] | None = None) -> str:
+                     read_image: Callable[[], str] | None = None,
+                     store: "PasteStore | None" = None) -> str:
     """Insert what is on the clipboard: text as is, files copied in Explorer as their paths,
     an image (screenshot) saved as a PNG and inserted as its path. Returns what was inserted."""
     text = (read_text or _windows_clipboard_text)()
@@ -1534,7 +1785,7 @@ def _paste_clipboard(event: _PromptEvent, read_text: Callable[[], str] | None = 
         image = (read_image or _windows_clipboard_image)()
         text = _quote_path(image) if image else ""
     if text:
-        event.current_buffer.insert_text(text.replace("\r\n", "\n").replace("\r", "\n"))
+        _insert_paste(event.current_buffer, text, store)
     return text
 
 
@@ -1543,6 +1794,89 @@ def _paste_clipboard(event: _PromptEvent, read_text: Callable[[], str] | None = 
 def _fit(text: str, width: int) -> str:
     """text cut to width columns, ending in … when it was longer."""
     return text if len(text) <= width else text[:max(0, width - 1)].rstrip() + "…"
+
+
+def _on_enter(buf, has_question: bool) -> str:
+    """What the enter key does in the message box. Returns what happened (for tests).
+
+    An empty (or whitespace-only) box is not a request, so enter does nothing there: it used to
+    submit nothing, which made the loop draw a brand-new box under the old one every time. The
+    one exception is when Forge is asking a question: there an empty enter is a real answer
+    ("yes", "skip", "cancel"), so it goes through."""
+    if buf.document.text_before_cursor.endswith("\\"):
+        buf.delete_before_cursor(1)
+        buf.insert_text("\n")
+        return "newline"
+    if buf.complete_state and buf.complete_state.current_completion:
+        buf.apply_completion(buf.complete_state.current_completion)
+        return "completed"
+    if not buf.text.strip() and not has_question:
+        if buf.text:
+            buf.reset()          # stray spaces or blank lines: clear them, send nothing
+        return "ignored"
+    buf.validate_and_handle()
+    return "submitted"
+
+
+def _resize_extra_rows(old_cols: int, new_cols: int, rows_above: int) -> int:
+    """How many more rows the box's full-width lines occupy after the window got narrower.
+
+    A terminal re-wraps what is already on screen when it is resized: a line drawn 120 columns wide
+    becomes two rows in a 70-column window. prompt_toolkit erases the box by moving up the number of
+    rows it *drew*, so after a zoom-in it stops short and leaves the old top edge and status rows
+    behind (the stack of purple lines). The extra rows are added to its climb. Widening never needs
+    any: lines that fit the narrow window still fit the wide one."""
+    if new_cols <= 0 or old_cols <= new_cols or rows_above <= 0:
+        return 0
+    return (-(-old_cols // new_cols) - 1) * rows_above
+
+
+def _erase_for_resize(renderer, old_cols: int, rows_above: int) -> None:
+    """prompt_toolkit's Renderer.erase(), but climbing past the rows the terminal re-wrapped."""
+    out = renderer.output
+    try:
+        new_cols = out.get_size().columns
+    except Exception:
+        new_cols = old_cols
+    out.write_raw("\r")
+    out.cursor_up(renderer._cursor_pos.y + _resize_extra_rows(old_cols, new_cols, rows_above))
+    out.erase_down()
+    out.reset_attributes()
+    out.enable_autowrap()
+    out.flush()
+    renderer.reset(leave_alternate_screen=False)
+
+
+def _install_resize_fix(pt_app, state: dict) -> None:
+    """Replace the application's resize handler with one that survives zooming.
+
+    `state` is kept up to date by the prompt's message(): cols (width it was last drawn at),
+    above (full-width rows above the input line) and drawn (a box is on screen right now)."""
+    original = pt_app._on_resize
+
+    def on_resize() -> None:
+        try:
+            if state.get("drawn"):
+                _erase_for_resize(pt_app.renderer, state.get("cols") or 0, state.get("above") or 0)
+                state["drawn"] = False   # erased: a second resize before the redraw must not climb again
+            else:
+                pt_app.renderer.reset(leave_alternate_screen=False)
+            pt_app._request_absolute_cursor_position()
+            pt_app._redraw()
+        except Exception:
+            original()
+
+    pt_app._on_resize = on_resize
+
+
+def _term_cols(pt_app=None) -> int:
+    """The window's width right now (what prompt_toolkit sees, else rich), read fresh every call."""
+    try:
+        if pt_app is not None:
+            return max(1, pt_app.output.get_size().columns)
+    except Exception:
+        pass
+    return max(1, console.width)
 
 
 def make_prompt(app: App):
@@ -1556,7 +1890,7 @@ def make_prompt(app: App):
                     lines.append(line[:-1])
                     continue
                 lines.append(line)
-                return "\n".join(lines)
+                return _clean_text("\n".join(lines))
         return plain
 
     from prompt_toolkit import PromptSession
@@ -1564,6 +1898,8 @@ def make_prompt(app: App):
     from prompt_toolkit.formatted_text import ANSI, FormattedText, to_formatted_text
     from prompt_toolkit.history import FileHistory
     from prompt_toolkit.key_binding import KeyBindings
+    from prompt_toolkit.keys import Keys
+    from prompt_toolkit.lexers import Lexer
     from prompt_toolkit.styles import Style
 
     class SlashCompleter(Completer):
@@ -1621,6 +1957,7 @@ def make_prompt(app: App):
                         yield Completion(n, -len(cur), display_meta=s[:60])
 
     kb = KeyBindings()
+    pastes = PasteStore()
 
     @kb.add("escape", "enter")
     @kb.add("c-j")
@@ -1629,14 +1966,25 @@ def make_prompt(app: App):
 
     @kb.add("enter")
     def _(event):
+        _on_enter(event.current_buffer, bool(app.ui.pending))
+
+    @kb.add(Keys.BracketedPaste)
+    def _(event):
+        # Terminal paste: repair surrogate halves from the Windows console before they reach the
+        # box, so they can never poison the history file, the session file or the request.
+        _insert_paste(event.current_buffer, event.data, pastes)
+
+    @kb.add("backspace")
+    def _(event):
         buf = event.current_buffer
-        if buf.document.text_before_cursor.endswith("\\"):
-            buf.delete_before_cursor(1)
-            buf.insert_text("\n")
-        elif buf.complete_state and buf.complete_state.current_completion:
-            buf.apply_completion(buf.complete_state.current_completion)
-        else:
-            buf.validate_and_handle()
+        if not _delete_pill(buf, backward=True):
+            buf.delete_before_cursor(event.arg)
+
+    @kb.add("delete")
+    def _(event):
+        buf = event.current_buffer
+        if not _delete_pill(buf, backward=False):
+            buf.delete(event.arg)
 
     @kb.add("c-c")
     def _(event):
@@ -1658,7 +2006,7 @@ def make_prompt(app: App):
         @kb.add("escape", "v")
         def _(event):
             try:
-                if not _paste_clipboard(event):
+                if not _paste_clipboard(event, store=pastes):
                     app.ui.info("nothing to paste: the clipboard has no text, files or image")
             except OSError as exc:
                 app.ui.warn(f"could not paste from the Windows clipboard: {exc}")
@@ -1680,6 +2028,7 @@ def make_prompt(app: App):
         "ask": "#fbbf24 bold",
         "frame": "#4c3a6b",
         "placeholder": "#6b6480 italic",
+        "pill": "bg:#4c1d95 #f5d0fe bold",
         "continuation": "#6b7280",
         "bottom-toolbar": "noreverse bg:#140a26 #c4b5fd",
         "tb": "bg:#140a26 #c4b5fd",
@@ -1692,25 +2041,38 @@ def make_prompt(app: App):
         "completion-menu.meta.completion": "bg:#1f1b2e #9ca3af",
         "completion-menu.meta.completion.current": "bg:#6d28d9 #e9d5ff",
     })
+    class PillLexer(Lexer):
+        """Shows each paste pill as a highlighted chip in the box."""
+        def lex_document(self, document):
+            lines = document.lines
+
+            return lambda i: _pill_fragments(lines[i])
+
     class RedactingHistory(FileHistory):
         """Input history never keeps a pasted API key (NEXT 7)."""
         def append_string(self, string: str) -> None:
-            super().append_string(keyvault.redact(string)[0])
+            # History is a convenience: a line it cannot store must never crash the prompt.
+            try:
+                super().append_string(_clean_text(keyvault.redact(_clean_text(string))[0]))
+            except (UnicodeError, OSError):
+                pass
 
     HOME_DIR.mkdir(parents=True, exist_ok=True)
     session = PromptSession(
         history=RedactingHistory(str(HOME_DIR / "history")),
         completer=SlashCompleter(), complete_while_typing=True,
-        key_bindings=kb, multiline=True, style=style,
+        key_bindings=kb, multiline=True, style=style, lexer=PillLexer(),
         prompt_continuation=lambda width, line, wrap: FormattedText([("class:continuation", "  ")]),
         bottom_toolbar=lambda: FormattedText(app.toolbar()),
         # The hint is cut to the window so it never wraps into a second row of the box.
         placeholder=lambda: FormattedText([("class:placeholder", _fit(
             "Ask Forge to build, fix or explain something…   / for commands · tab completes",
-            console.width - 4))]),
+            _term_cols(session.app) - 4))]),
         reserve_space_for_menu=6,
         refresh_interval=0.1,   # keeps the pixel city and live status above the box moving
     )
+
+    layout: dict = {"cols": 0, "above": 0, "drawn": False}
 
     def message():
         """What sits above and in front of the box: the live status while Forge works, and the
@@ -1719,7 +2081,7 @@ def make_prompt(app: App):
         try:
             # How tall the box is right now (typed lines plus wrapped ones), so the live status
             # above it shrinks instead of pushing the box and the footer off the screen.
-            cols = max(20, console.width - 4)
+            cols = max(20, _term_cols(session.app) - 4)
             doc = session.default_buffer.document
             app.ui.input_rows = sum(max(1, -(-len(ln) // cols)) for ln in doc.lines) + (2 if app.ui.pending else 0)
         except Exception:
@@ -1729,7 +2091,10 @@ def make_prompt(app: App):
             parts += to_formatted_text(ANSI(status))
         # The box's top edge: a thin neon line with the Forge mark, drawn by prompt_toolkit itself
         # so it always moves with the box (multi-line input, pastes, the menu, resizes).
-        edge = max(10, console.width - 1)
+        # Width is read fresh on every draw (never cached), one column short of the window so the
+        # line can never wrap by itself.
+        width = _term_cols(session.app)
+        edge = max(10, width - 1)
         label = " ◆ forge "
         parts += [("class:edge", "╭─"), ("class:edge.mark", label),
                   ("class:edge", "─" * max(0, edge - len(label) - 2) + "\n")]
@@ -1738,6 +2103,9 @@ def make_prompt(app: App):
             parts += [("class:ask", f"{p['label']}\n"), ("class:prompt", "› ")]
         else:
             parts.append(("class:prompt", "❯ "))
+        # What the resize handler needs to erase this box cleanly after a zoom.
+        layout.update(cols=width, drawn=True,
+                      above=sum(str(frag[1]).count("\n") for frag in parts))
         return parts
 
     def ask():
@@ -1746,8 +2114,14 @@ def make_prompt(app: App):
         # pastes, the completion menu and window resizes, and littered the scrollback.
         if not app.busy():
             console.print()
-        return session.prompt(message)
+        layout["drawn"] = False          # nothing of this prompt is on screen yet
+        try:
+            return pastes.expand(_clean_text(session.prompt(message)))
+        finally:
+            layout["drawn"] = False      # submitted: the box is history now, never erase it again
 
+    _install_resize_fix(session.app, layout)
+    app._pt_app = session.app
     ask.docked = True
     app._redraw = lambda: session.app.invalidate() if session.app.is_running else None
     try:
