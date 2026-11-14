@@ -547,6 +547,10 @@ class Router:
                 if self.usage is not None:
                     self.usage.record("timeout", f"{p.name}:{m}", False)
                 return None
+            if p.last_error.startswith("malformed tool call"):
+                _quality.record(p.name, m, False)
+                self.model_down[(p.name, m)] = time.time() + 300
+                return None
             if p.last_error.startswith("empty / junk"):
                 _quality.record(p.name, m, False)
                 n = self.junk[(p.name, m)] = self.junk.get((p.name, m), 0) + 1
