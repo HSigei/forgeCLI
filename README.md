@@ -24,19 +24,11 @@ pipx install forgecommandline
 
 These are real screenshots from Windows Terminal. Run `forge` in any project folder:
 
-<img src="docs/media/startup.png" alt="Forge start screen: pixel-art banner, then a panel with the model, failover route, folder, approval mode and last conversation" width="100%">
+<img src="docs/media/working.webp" alt="Forge mid-turn on a resumed session: the courier pushes parcels to the door while the model writes, status bar with model, context and task" width="100%">
 
-While it works, a courier pushes a wheelbarrow of parcels along the status line instead of a
-spinner. Skills it picks, questions it asks and its replies all appear in the chat:
+<img src="docs/media/startup.webp" alt="Forge start screen: the cub, the FORGE logo, model, failover route, folder, approval mode and last session" width="100%">
 
-<img src="docs/media/working.png" alt="Forge mid-turn: two skills picked, a 'Forge asks' box with numbered options, the courier sprite and a Thinking line" width="100%">
-
-<p align="center"><img src="docs/media/courier.gif" alt="The courier: a kid in headphones pushing a purple wheelbarrow" width="220"></p>
-
-With `/city on`, a pixel city sits above the message box and its workers act out the same
-events; a green DONE sign lights up when a turn finishes:
-
-<img src="docs/media/chat.png" alt="Forge chat: two short replies with provider, model, time and token counts, and the pixel city with a DONE sign" width="100%">
+<img src="docs/media/loader.webp" alt="Forge loading screen: gradient FORGE logo, build deploy scale, warming up" width="100%">
 
 | What you see | Meaning |
 |---|---|
