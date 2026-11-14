@@ -179,7 +179,9 @@ def _vague_build(text: str) -> bool:
 _DEFAULTS_NOTE = (
     "\n\n[Forge: the request is short, so build it now without asking anything. Choose sensible "
     "defaults for purpose, content, look and stack; use clear placeholders (\"Your name\", "
-    "\"Product name\") instead of inventing personal facts; read any attachments first. When it "
+    "\"Product name\") instead of inventing personal facts; read any attachments first. If the "
+    "request names no product or subject, do not invent one: use clearly marked placeholders such "
+    "as [Product name] and say so in your assumptions. When it "
     "works, end with a short list of the assumptions you made so the user can change them.]")
 
 _INTERVIEW_NOTE = (

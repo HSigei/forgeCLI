@@ -127,7 +127,7 @@ UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like 
 
 
 _PS_PIPES = [
-    (re.compile(r"^\s*mkdir\s+-p\s+(.+?)\s*$", re.I),
+    (re.compile(r'^\s*mkdir\s+-p\s+("[^"]+"|\S+)\s*$', re.I),
      r"New-Item -ItemType Directory -Force -Path \1 | Out-Null"),
     (re.compile(r"\|\s*head\s+-n\s*(\d+)\b"), r"| Select-Object -First \1"),
     (re.compile(r"\|\s*head\s+-(\d+)\b"), r"| Select-Object -First \1"),
