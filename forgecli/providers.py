@@ -416,6 +416,7 @@ class Router:
         self.store = store or CooldownStore()
         self.providers = [Provider(p, self.store, settings, log) for p in settings.providers]
         self.pinned: str | None = None   # provider name, or None for automatic failover
+        self.strict = False   # /model <x>: use exactly the pinned provider's current model, no alternates
         self.model_down: dict[tuple[str, str], float] = {}   # (provider, model) -> skip until
         self._speeds: dict[str, float] | None = None
         self.by_speed = settings.fastest_first
@@ -666,6 +667,8 @@ class Router:
     def _models_of(self, p: Provider) -> list[str]:
         """The provider's main model, then (when pinned via automatic failover) up to 3 of its
         other models: a limit or outage on one model rarely hits the others."""
+        if self.strict and self.pinned == p.name:
+            return [p.model]        # the user picked this model: never swap in another one
         alts = [m for m in p.models if m != p.model][:3]
         return sorted([p.model] + alts, key=lambda model: self._health_rank(p.name, model))
 
@@ -693,6 +696,8 @@ class Router:
         """ev(kind, provider, model, detail) reports progress: try / fail / benched / wait.
         on_text(str) receives the reply as it streams; after a 'fail' event the text so far is void."""
         rounds = self.settings.retry_rounds
+        if self.strict and self.pinned:
+            prefer = None           # a team worker's own model must not override the chosen one
         self.too_big, self.size_cap = False, 0
         deadline = time.time() + max(0, getattr(self.settings, "max_wait", 150))
         attempt = 0
