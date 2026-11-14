@@ -1337,14 +1337,29 @@ components:
         key_rows = repr(key_list_ui.rows)
         assert unknown_key not in key_rows and keyvault.mask(unknown_key) in key_rows
 
+        class CaptureSetupUI(UI):
+            def __init__(self):
+                super().__init__()
+                self.tables = []
+                self.messages = []
+
+            def table(self, title, _headers, rows, _styles=None):
+                if title == "providers":
+                    self.tables.append([list(row) for row in rows])
+
+            def _print(self, *items):
+                self.messages.extend(getattr(item, "plain", str(item)) for item in items)
+
         setup_agent = Agent(Settings(retry_rounds=0), UI(), router=Router(
             Settings(retry_rounds=0), lambda *args: None, CooldownStore(kv_dir / "setup-state.json")))
         setup_agent.keystore_path = kv_dir / "setup-keys.json"
         setup_agent.key_tester = lambda *args: (True, "works")
-        setup_app = App(setup_agent, UI())
-        prompts = iter(["1", ""])
+        setup_ui = CaptureSetupUI()
+        setup_app = App(setup_agent, setup_ui)
+        prompts = iter(["1", "1", ""])
         setup_app.line_input = lambda _prompt: next(prompts)
-        setup_app.secret_input = lambda _prompt: "gsk_" + "Z9y8X7w6V5u4T3s2R1q0"
+        secrets = iter(["gsk_" + "Z9y8X7w6V5u4T3s2R1q0", ""])
+        setup_app.secret_input = lambda _prompt: next(secrets)
         import webbrowser
         original_open = webbrowser.open
         webbrowser.open = lambda _url: True
@@ -1354,6 +1369,15 @@ components:
             webbrowser.open = original_open
         assert keyvault.KeyStore(kv_dir / "setup-keys.json").load()["groq"]
         assert setup_agent.router.get("groq")
+        assert len(setup_ui.tables) == 2
+        initial_groq = next(row for row in setup_ui.tables[0] if row[1] == "groq")
+        refreshed_groq = next(row for row in setup_ui.tables[1] if row[1] == "groq")
+        assert initial_groq[-1] == "" and refreshed_groq[-1] == "✓"
+        saved = next(message for message in setup_ui.messages if "groq key" in message)
+        assert saved.count("✓") == 1, saved
+        assert "skipped groq" in setup_ui.messages
+        assert any("paste the key here, or press Enter to skip" in message
+                   for message in setup_ui.messages)
 
         from types import SimpleNamespace
         from forgecli.mcp import UsageStore
