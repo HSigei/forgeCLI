@@ -789,7 +789,11 @@ class App:
         store.add(key, provider)
         base, model = eps.get(provider, ("", ""))
         self.router.add_key(provider, key, base, model)
-        (self.ui.ok if ok else self.ui.warn)(f"{'✓' if ok else '•'} {provider} key {keyvault.mask(key)} saved · {why}")
+        message = f"{provider} key {keyvault.mask(key)} saved · {why}"
+        if ok:
+            self.ui.ok(message)
+        else:
+            self.ui.warn("• " + message)
         return True
 
     def cmd_keys(self, arg):
@@ -888,24 +892,31 @@ class App:
 
     def cmd_setup(self, _):
         names = list(keyvault.SIGNUP)
-        have = {p.name for p in self.router.providers if p.pool.keys != [keyvault.ANON]}
         self.ui.info("Forge already works with free keyless models. Your own keys give faster, stronger ones.")
-        self.ui.table("providers", ["#", "provider", "cost", "good at", "you have"],
-                      [[i + 1, n, *keyvault.SIGNUP[n][:2], "✓" if n in have else ""] for i, n in enumerate(names)],
-                      ["muted", "accent", None, "muted", "ok"])
+
+        def show_providers():
+            have = {p.name for p in self.router.providers if p.pool.keys != [keyvault.ANON]}
+            self.ui.table("providers", ["#", "provider", "cost", "good at", "you have"],
+                          [[i + 1, n, *keyvault.SIGNUP[n][:2], "✓" if n in have else ""]
+                           for i, n in enumerate(names)],
+                          ["muted", "accent", None, "muted", "ok"])
+
+        show_providers()
         while True:
             ans = self._line("number = open its key page · k = paste a key · enter = done")
             if not ans:
                 return
-            if keyvault.find_keys(ans):           # pasted straight in: still accepted
-                for k in keyvault.find_keys(ans):
-                    self.add_key(k)
+            pasted = keyvault.find_keys(ans)
+            if pasted:                            # pasted straight in: still accepted
+                for k in pasted:
+                    if self.add_key(k):
+                        show_providers()
                 continue
             provider = None
             if ans.isdigit() and 1 <= int(ans) <= len(names):
                 provider = names[int(ans) - 1]
                 url = keyvault.SIGNUP[provider][2]
-                self.ui.info(f"opening {url}")
+                self.ui.info(f"opening {url} — paste the key here, or press Enter to skip")
                 try:
                     import webbrowser
                     webbrowser.open(url)
@@ -916,7 +927,10 @@ class App:
             key = self._secret(f"paste the {provider or 'API'} key (hidden, enter = skip)")
             if key:
                 found = keyvault.detect_provider(key)
-                self.add_key(key, provider if not found or found == provider else found)
+                if self.add_key(key, provider if not found or found == provider else found):
+                    show_providers()
+            else:
+                self.ui.info(f"skipped {provider or 'API'}")
 
     def cmd_doctor(self, _):
         a = self.agent
