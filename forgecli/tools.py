@@ -1235,10 +1235,37 @@ class Tools:
         for i in items:
             if i.get("task") in finished:
                 i["status"] = "done"
+        after_change = self.ledger.after_change()
+
+        def local_http(step):
+            if step.name not in ("http_request", "web_fetch"):
+                return False
+            try:
+                host = urllib.parse.urlparse(str(step.args.get("url") or "")).hostname
+            except ValueError:
+                return False
+            return host in ("localhost", "127.0.0.1", "::1")
+
+        verified = any(
+            step.name == "browser_check"
+            or (step.name == "run_shell" and guards.test_succeeded(step))
+            or local_http(step)
+            for step in after_change
+        )
+        blocked = False
+        for i in items:
+            task = str(i.get("task") or "")
+            if (i.get("status") == "done" and task not in finished
+                    and re.search(r"\b(test|verify|verif|qa)\b", task, re.I) and not verified):
+                i["status"] = "doing"
+                blocked = True
         self.ui.todos(items)
         self.todo_items = items
         left = sum(i.get("status") != "done" for i in items)
-        return f"Checklist updated ({len(items) - left}/{len(items)} done)."
+        result = f"Checklist updated ({len(items) - left}/{len(items)} done)."
+        if blocked:
+            result += " Not marked done: run browser_check or the tests first."
+        return result
 
     def t_memory(self, action, scope, note=""):
         if action == "read":

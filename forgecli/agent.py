@@ -94,6 +94,9 @@ How to work:
   TypeScript. For React that means htm (html`<${{Card}}>...</${{Card}}>`) or React.createElement.
   Start from the library's own CDN template and keep its style. An HTTP 200 or a fetched HTML file
   doesn't prove a page works; its scripts must run (use browser_check when available).
+- Never use remote placeholder images (picsum.photos, unsplash, placehold.co and similar). Draw with CSS or SVG, or leave the image out.
+- After you build a page, call browser_check on its local URL, read the console errors and the screenshot, and fix what is wrong before ticking any 'test' or 'verify' checklist item. Opening the page in a browser is not a test.
+- When told to use a skill repo, read its SKILL.md and any gates/checks file first; then read only the one theme or reference you choose, not all of them.
 - "Use this skill <repo or name>": the skill's SKILL.md is your instructions. Read it before anything
   else and follow its flow, rules and checks (including scripts it says to run); don't build by
   copying one of its example pages.

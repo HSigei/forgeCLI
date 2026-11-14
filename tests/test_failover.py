@@ -150,6 +150,30 @@ def main():
     assert any("empty / junk" in l for l in logs), logs
     print("ok  failover across 5 bad keys -> provider B, tool executed")
 
+    malformed_settings = Settings(retry_rounds=0, providers=[
+        ProviderConfig("malformed", "http://127.0.0.1:1/v1", "m", ["bad-key"])])
+    malformed_router = Router(
+        malformed_settings, lambda *_: None, CooldownStore(tmp / "malformed-state.json"))
+    malformed_provider = malformed_router.providers[0]
+
+    def malformed_call(*args, **kwargs):
+        malformed_provider.last_error = "malformed tool call: invalid arguments"
+        return None
+
+    malformed_provider.call = malformed_call
+    quality_failures = []
+    original_quality_record = provmod._quality.record
+    provmod._quality.record = lambda p, m, good: quality_failures.append((p, m, good))
+    try:
+        assert malformed_router._try(
+            malformed_provider, [{"role": "user", "content": "test"}], [], "m") is None
+    finally:
+        provmod._quality.record = original_quality_record
+    assert malformed_router.is_down("malformed", "m")
+    assert malformed_router.model_down[("malformed", "m")] > time.time() + 295
+    assert quality_failures == [("malformed", "m", False)]
+    print("ok  malformed tool call records a quality failure and benches the model")
+
     # 2. Benched keys are skipped next time (only empty1/verdict1 remain on A).
     CALLS.clear()
     agent.run_turn(f"read {note}")
@@ -517,6 +541,21 @@ def main():
     todo_tools.t_todo([{"task": "step", "status": "done"}])
     todo_tools.t_todo([{"task": "step", "status": "todo"}])
     assert todo_tools.todo_items == [{"task": "step", "status": "done"}]
+    verify_tools = Tools(UI(), "powershell")
+    verify_tools.ledger.add("write_file", {"path": "index.html"}, "Wrote 123 bytes.")
+    result = verify_tools.t_todo([
+        {"task": "test the page", "status": "done"},
+        {"task": "add styling", "status": "done"},
+    ])
+    assert verify_tools.todo_items[0]["status"] == "doing"
+    assert verify_tools.todo_items[1]["status"] == "done"
+    assert "Not marked done: run browser_check or the tests first." in result
+    verify_tools.ledger.add("browser_check", {"url": "http://localhost:8000"},
+                            "Error: console error")
+    result = verify_tools.t_todo([{"task": "test the page", "status": "done"}])
+    assert verify_tools.todo_items[0]["status"] == "done"
+    assert "Not marked done" not in result
+    print("ok  test checklist items require post-change verification evidence")
     print("ok  head/tail/grep/wc in a PowerShell command are translated")
 
     # 23. Claude Code's skills are copied into Forge and keep working without Claude Code.
