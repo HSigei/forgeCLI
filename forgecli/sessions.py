@@ -8,6 +8,7 @@ import pathlib
 import secrets
 from dataclasses import dataclass, field
 
+from . import textsafe
 from .config import HOME_DIR
 
 SESSION_DIR = HOME_DIR / "sessions"
@@ -41,7 +42,9 @@ class Session:
         self.updated = _now()
         SESSION_DIR.mkdir(parents=True, exist_ok=True)
         tmp = self.path.with_suffix(".tmp")
-        tmp.write_text(json.dumps(self.__dict__, ensure_ascii=False, indent=1), encoding="utf-8")
+        # surrogate halves (from a Windows paste or a tool's output) cannot be written as UTF-8
+        tmp.write_text(textsafe.clean(json.dumps(self.__dict__, ensure_ascii=False, indent=1)),
+                       encoding="utf-8")
         os.replace(tmp, self.path)
 
     @classmethod
