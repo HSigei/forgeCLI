@@ -30,6 +30,7 @@ RISKY = [
     (r"\b(stop-process|taskkill|kill|pkill|killall)\b", "kills processes"),
     (r"\bset-executionpolicy\b|\bnetsh\b|\bsc(\.exe)?\s+(delete|config|stop)", "changes system settings"),
     (r"\b(npm|pnpm|yarn)\s+(i|install|add)\s+(-g|--global)\b", "installs globally"),
+    (r"\bnpx(?:\.cmd)?\s+(?:-y|--yes)\b", "runs an npm package without confirmation"),
     (r"\bchoco\s+install|\bwinget\s+(install|uninstall)|\bscoop\s+install", "installs software"),
     (r"\bpip\s+uninstall|\bnpm\s+uninstall|\bwinget\s+uninstall", "uninstalls software"),
     (r"(curl|wget|iwr|invoke-webrequest|irm|invoke-restmethod)[^|]*\|\s*(sh|bash|iex|invoke-expression|python|powershell)", "runs a downloaded script"),

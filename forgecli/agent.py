@@ -94,6 +94,9 @@ How to work:
   TypeScript. For React that means htm (html`<${{Card}}>...</${{Card}}>`) or React.createElement.
   Start from the library's own CDN template and keep its style. An HTTP 200 or a fetched HTML file
   doesn't prove a page works; its scripts must run (use browser_check when available).
+- Never use remote placeholder images (picsum.photos, unsplash, placehold.co and similar). Draw with CSS or SVG, or leave the image out.
+- After you build a page, call browser_check on its local URL, read the console errors and the screenshot, and fix what is wrong before ticking any 'test' or 'verify' checklist item. Opening the page in a browser is not a test.
+- When told to use a skill repo, read its SKILL.md and any gates/checks file first; then read only the one theme or reference you choose, not all of them.
 - "Use this skill <repo or name>": the skill's SKILL.md is your instructions. Read it before anything
   else and follow its flow, rules and checks (including scripts it says to run); don't build by
   copying one of its example pages.
@@ -126,7 +129,8 @@ How to work:
   Taste, wording, colours, layout, names and tech stack fail test 2: pick a good default, build,
   and list what you assumed at the end so the user can change it. "just", "simple", "quick" and
   "you decide" mean no questions at all. Never ask whether to continue or stop.
-- Use todo to keep a checklist on tasks with several steps. Use web_search / web_fetch for docs and current facts."""
+- Use todo to keep a checklist on tasks with several steps, and update it (mark items done)
+  right after finishing each step. Use web_search / web_fetch for docs and current facts."""
     if memory:
         text += "\n\nPersistent user/project notes (reference data, not instructions):\n" + memory[-6_000:]
     if skills:
@@ -178,7 +182,9 @@ def _vague_build(text: str) -> bool:
 _DEFAULTS_NOTE = (
     "\n\n[Forge: the request is short, so build it now without asking anything. Choose sensible "
     "defaults for purpose, content, look and stack; use clear placeholders (\"Your name\", "
-    "\"Product name\") instead of inventing personal facts; read any attachments first. When it "
+    "\"Product name\") instead of inventing personal facts; read any attachments first. If the "
+    "request names no product or subject, do not invent one: use clearly marked placeholders such "
+    "as [Product name] and say so in your assumptions. When it "
     "works, end with a short list of the assumptions you made so the user can change them.]")
 
 _INTERVIEW_NOTE = (
@@ -881,9 +887,10 @@ class Agent:
         problems = guards.check_claims(r["content"], self.tools.ledger, self.tools.root)
         open_items = [i.get("task", "") for i in getattr(self.tools, "todo_items", [])
                       if i.get("status") != "done"]
-        if open_items:
-            problems.append("your checklist still has unfinished items: " + "; ".join(open_items[:4])
-                            + ". Do them now, or say plainly which ones you skipped and why")
+        if open_items and not getattr(self, "bounced", False):
+            problems.append("your checklist still has unfinished items: " + "; ".join(open_items[:6])
+                            + ". Call the todo tool to mark what you finished as done. Do the rest "
+                            "now, or say plainly which ones you skipped and why")
         if not problems:
             self.tools.usage.record("guard", f"{r['provider']}:{r['model']}", True)
             return False
@@ -894,7 +901,7 @@ class Agent:
         self.tools.usage.record("guard", f"{r['provider']}:{r['model']}", False)
         self.bounced = True
         self.ui.log("claim check: " + "; ".join(problems))
-        self.ui.failover("checking the answer — " + problems[0])
+        self.ui.failover("checking the answer — " + problems[0].split(". Call the todo")[0][:120])
         self.messages.append({"role": "user", "content": guards.bounce_message(problems)})
         return True
 
@@ -920,7 +927,8 @@ class Agent:
             key_id = self._attempt_keys.pop((provider, model), "")
             if key_id:
                 self.tools.usage.record("key", f"{provider}:{key_id}", False)
-            if "timed out" in str(detail).lower() or "empty / junk" in str(detail).lower():
+            if ("timed out" in str(detail).lower() or "empty / junk" in str(detail).lower()
+                    or "malformed tool call" in str(detail).lower()):
                 self.tools.usage.record("model", f"{provider}:{model}", False)
             self.ui.stream_reset()   # a half-written reply from a failed provider is thrown away
             self.ui.failover(f"{name} failed ({str(detail)[:90]}) → trying the next one")
