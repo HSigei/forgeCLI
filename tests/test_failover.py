@@ -6,6 +6,7 @@ No real API keys or quota are used.
 import copy
 import http.server
 import json
+import os
 import pathlib
 import re
 import sys
@@ -14,6 +15,10 @@ import threading
 import time
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
+
+for _name in tuple(os.environ):
+    if _name.startswith("FORGE_"):
+        os.environ.pop(_name)
 
 from forgecli import guards as guardsmod, mcp as mcpmod, parallel, roster, sessions, skills  # noqa: E402
 from forgecli.agent import Agent  # noqa: E402
@@ -2584,8 +2589,26 @@ components:
         assert _sp.render(_con, _lines), _wd
         _rows = _buf.getvalue().rstrip(chr(10)).split(chr(10))
         assert any("model-4" in _T.from_ansi(r).plain for r in _rows)
-        assert all(_T.from_ansi(r).cell_len <= _wd for r in _rows), _wd
+        assert all(_T.from_ansi(re.sub(r"\x1bP.*?\x1b\\", "", r, flags=re.S)).cell_len <= _wd
+                   for r in _rows), _wd
     assert not _sp.render(_C(file=_io.StringIO(), width=60, force_terminal=True), _lines)
+    _old_graphics = os.environ.get("FORGE_GRAPHICS")
+    try:
+        os.environ["FORGE_GRAPHICS"] = "sixel"
+        for _wd in (90, 128, 200):
+            _buf = _io.StringIO()
+            _con = _C(file=_buf, width=_wd, force_terminal=True, color_system="truecolor")
+            assert _sp.render(_con, _lines), _wd
+            _rows = _buf.getvalue().rstrip(chr(10)).split(chr(10))
+            assert any("\x1bP" in r for r in _rows), _wd
+            assert any("model-4" in _T.from_ansi(r).plain for r in _rows)
+            assert all(_T.from_ansi(re.sub(r"\x1bP.*?\x1b\\", "", r, flags=re.S)).cell_len <= _wd
+                       for r in _rows), _wd
+    finally:
+        if _old_graphics is None:
+            os.environ.pop("FORGE_GRAPHICS", None)
+        else:
+            os.environ["FORGE_GRAPHICS"] = _old_graphics
     print("ok  start screen: tiger, FORGE and arrow details over the city; tiny windows fall back")
 
     # Loading screen, sponsor line and the HD start picture.
