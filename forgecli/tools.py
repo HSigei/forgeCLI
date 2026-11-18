@@ -357,6 +357,8 @@ class Tools:
         self.http = HttpAPI(self)
         self.openapi = OpenAPIs(self.http, self.root)
         self.mcp = MCPManager(self, self.root, self.usage)
+        from .novabridge import NovaBridge
+        self.nova = NovaBridge(self)          # Nova's desktop, screen, browser, memory and dev tools
 
     @property
     def auto_approve(self) -> bool:
@@ -449,6 +451,8 @@ class Tools:
             return _clip(self.openapi.execute(name, args))
         fn = getattr(self, f"t_{name}", None)
         if fn is None:
+            if name in self.nova.names():
+                return _clip(self.nova.execute(name, args))
             return f"Error: unknown tool '{name}'."
         try:
             return _clip(fn(**args))
@@ -1202,10 +1206,19 @@ class Tools:
         return self.mcp.search(str(query))
 
     def extra_schemas(self, query: str) -> list[dict]:
-        schemas = [OPENAPI_IMPORT_SCHEMA, OPENAPI_SEARCH_SCHEMA, *self.openapi.schemas(query)]
+        schemas = [*self.openapi.schemas(query)]
         if self.mcp.configs:
             schemas.extend(self.mcp.schemas(query))
-        return schemas
+        schemas.extend(self.nova.schemas(query))
+        # One schema per name: Gemini rejects a request that declares a function twice
+        # ("Duplicate function declaration"), and SCHEMAS already has the openapi tools.
+        have = {s["function"]["name"] for s in SCHEMAS}
+        out = []
+        for s in schemas:
+            if s["function"]["name"] not in have:
+                have.add(s["function"]["name"])
+                out.append(s)
+        return out
 
     def doctor_report(self) -> str:
         reports = [self.mcp.report(), self.openapi.report()]

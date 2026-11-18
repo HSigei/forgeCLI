@@ -63,6 +63,7 @@ COMMANDS = {
     "/github": "/github status · login · logout — GitHub sign-in (device code, no gh needed)",
     "/yes": "toggle auto-approve for everything",
     "/verbose": "toggle the key rotation / failover log",
+    "/voice": "/voice — speak one request (replies read aloud) · /voice on — hands-free · /voice mute|unmute|status",
     "/update": "check for a newer Forge and install it: /update · /update check",
     "/feedback": "report a bug or suggest an idea: /feedback · /feedback idea · /feedback <what happened> · /feedback off",
     "/exit": "quit",
@@ -1358,6 +1359,58 @@ class App:
     def cmd_verbose(self, _):
         self.ui.verbose = not self.ui.verbose
         self.ui.ok(f"failover log {'ON' if self.ui.verbose else 'OFF'}")
+
+    voice = None
+
+    def cmd_voice(self, arg):
+        from . import voicechat
+        word = arg.lower().split()[0] if arg.strip() else ""
+        if self.voice is None:
+            self.voice = voicechat.Voice()
+        v = self.voice
+        if word == "status":
+            self.ui.info(v.status())
+            return
+        if word in ("mute", "quiet"):
+            v.speak = False
+            self.ui.ok("voice replies off (still listening on /voice)")
+            return
+        if word in ("unmute", "speak"):
+            v.speak = True
+            self.ui.ok("voice replies on")
+            return
+        if word not in ("", "on", "once"):
+            self.ui.error("usage: /voice · /voice on (hands-free until you go quiet) · /voice mute|unmute|status")
+            return
+        hands_free = word == "on"
+        self.work(lambda: self._voice_turns(hands_free), "⏹ voice stopped")
+
+    def _voice_turns(self, hands_free: bool) -> None:
+        from . import voicechat
+        v = self.voice
+        stopped = lambda: self._stopping
+        try:
+            v.load(self.ui.info)
+        except voicechat.VoiceError as exc:
+            self.ui.error(str(exc))
+            return
+        while True:
+            self.ui.info("🎙 listening… (speak, then pause · esc stops)")
+            text = v.transcribe(v.listen(stopped)).strip()
+            if not text:
+                self.ui.info("didn't hear anything" + (" — voice off" if hands_free else ""))
+                return
+            self.ui.info(f"  ↳ you said: {text}")
+            if hands_free and text.lower().strip(" .!") in ("stop", "stop listening", "that's all", "goodbye"):
+                self.ui.ok("voice off")
+                return
+            before = len(self.agent.messages)
+            self.agent.run_turn(_clean_text(text))
+            reply = next((m.get("content") for m in reversed(self.agent.messages[before:])
+                          if m.get("role") == "assistant" and m.get("content")), "")
+            v.say(str(reply or ""), stopped)
+            if not hands_free:
+                return
 
     # chat ---------------------------------------------------------------------------
     def run(self, text: str, echo: str = "") -> None:

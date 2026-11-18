@@ -21,8 +21,15 @@ LIMITS_FILE = HOME_DIR / "model_limits.json"  # learned: largest request each mo
 
 
 def request_size(messages, tools) -> int:
-    """Characters sent in one request: a stable stand-in for tokens (~4 chars each)."""
-    return len(json.dumps(messages, ensure_ascii=False)) + len(json.dumps(tools or [], ensure_ascii=False))
+    """Characters sent in one request: a stable stand-in for tokens (~4 chars each).
+
+    Includes the JSON overhead of the request body (model, max_tokens, temperature, etc.)
+    which is about 75 chars without tools, 111 chars with tools."""
+    base = len(json.dumps(messages, ensure_ascii=False)) + len(json.dumps(tools or [], ensure_ascii=False))
+    # Overhead for: {"model":"...","messages":...,"max_tokens":...,"temperature":...,"stream":...}
+    # plus "tools":[...],"tool_choice":"auto" when tools are present
+    overhead = 111 if tools else 75
+    return base + overhead
 
 
 class Thought(str):
@@ -102,10 +109,16 @@ def new_call_id() -> str:
 _ID_OK = re.compile(r"[A-Za-z0-9]{9}")
 
 
-def portable(messages: list[dict]) -> list[dict]:
+# Gemini 3 wants each earlier tool call sent back with its thought signature. Calls made by other
+# models have none, so they carry Google's documented placeholder instead.
+_NO_SIGNATURE = {"google": {"thought_signature": "skip_thought_signature_validator"}}
+
+
+def portable(messages: list[dict], gemini: bool = False) -> list[dict]:
     """History any provider accepts: only standard fields, and tool-call ids in the
     strictest format (9 alphanumerics), mapped consistently. Old sessions and
-    replies from other providers then work everywhere."""
+    replies from other providers then work everywhere. gemini=True keeps the
+    thought signatures Gemini 3 requires."""
     def fix(i: str) -> str:
         return i if _ID_OK.fullmatch(i or "") else hashlib.md5((i or "").encode()).hexdigest()[:9]
 
@@ -115,6 +128,9 @@ def portable(messages: list[dict]) -> list[dict]:
         if m.get("tool_calls"):
             n["tool_calls"] = [{"id": fix(tc["id"]), "type": "function", "function": tc["function"]}
                                for tc in m["tool_calls"]]
+            if gemini:
+                for n_tc, tc in zip(n["tool_calls"], m["tool_calls"]):
+                    n_tc["extra_content"] = tc.get("extra_content") or _NO_SIGNATURE
         if m["role"] == "tool":
             n["tool_call_id"] = fix(m.get("tool_call_id", ""))
         out.append(n)
@@ -138,8 +154,10 @@ def _norm_tool_calls(raw) -> list[dict] | None:
             return None
         # Fresh 9-char alphanumeric ids: the strictest format any provider accepts (Mistral),
         # so a conversation started on one provider can be continued on any other.
-        out.append({"id": new_call_id(),
-                    "type": "function", "function": {"name": name, "arguments": args or "{}"}})
+        call = {"id": new_call_id(), "type": "function", "function": {"name": name, "arguments": args or "{}"}}
+        if (tc or {}).get("extra_content"):
+            call["extra_content"] = tc["extra_content"]   # Gemini 3 thought signature
+        out.append(call)
     return out
 
 
@@ -290,6 +308,8 @@ class Provider:
                                             {"id": "", "type": "function", "function": {"name": "", "arguments": ""}})
                     if tc.get("id"):
                         slot["id"] = tc["id"]
+                    if tc.get("extra_content"):
+                        slot["extra_content"] = tc["extra_content"]
                     fn = tc.get("function") or {}
                     slot["function"]["name"] += fn.get("name") or ""
                     slot["function"]["arguments"] += fn.get("arguments") or ""
@@ -308,7 +328,9 @@ class Provider:
              model: str | None = None, timeout: float | None = None, on_text=None) -> dict | None:
         """on_text(str) streams the reply as it is written; without it the reply comes in one piece."""
         model = model or self.model
-        body = {"model": model, "messages": portable(images.parts(messages, model)),
+        body = {"model": model,
+                "messages": portable(images.parts(messages, model),
+                                     gemini=self.name == "gemini" or model.startswith(("gemini", "google/gemini"))),
                 "max_tokens": self.settings.max_tokens, "temperature": self.settings.temperature}
         if tools:
             body["tools"] = tools
@@ -557,6 +579,10 @@ class Router:
                 if n >= 2:   # it keeps failing at this job; let the others take it for a while
                     self.model_down[(p.name, m)] = time.time() + 300
                     self.junk.pop((p.name, m), None)
+                return None
+            if any(f"HTTP {c}" in p.last_error for c in (502, 503, 529)):
+                # "high demand" / overloaded: another key won't help right now; its siblings might
+                self.model_down[(p.name, m)] = time.time() + 120
                 return None
             if any(f"HTTP {c}" in p.last_error for c in (404, 410)):
                 # the model is gone from this provider; stop asking it for an hour

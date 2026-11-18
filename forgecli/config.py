@@ -24,7 +24,8 @@ KNOWN_PROVIDERS = {
     "deepseek": ("https://api.deepseek.com/v1", "deepseek-chat"),
     "openrouter": ("https://openrouter.ai/api/v1", "nvidia/nemotron-3-ultra-550b-a55b:free"),
     "openai": ("https://api.openai.com/v1", "gpt-4.1-mini"),
-    "gemini": ("https://generativelanguage.googleapis.com/v1beta/openai", "gemini-2.5-flash"),
+    # gemini-2.5-* answers 404 "no longer available to new users" (checked 2026-11-17).
+    "gemini": ("https://generativelanguage.googleapis.com/v1beta/openai", "gemini-3.5-flash-lite"),
     # More free tiers (from github.com/mnfst/awesome-free-llm-apis); used once you add a key.
     "zai": ("https://open.bigmodel.cn/api/paas/v4", "glm-4.7-flash"),
     "gonka": ("https://proxy.gonkabroker.com/v1", "deepseek-ai/DeepSeek-V4-Flash-0731"),
@@ -43,6 +44,10 @@ KEYLESS = {
     "kilo": ["nvidia/nemotron-3.5-lightning:free", "nvidia/nemotron-3-ultra-550b-a55b:free"],
     "llm7": [],
     "ovh": ["Qwen3.5-397B-A17B"],
+}
+# Sibling models tried on the same keys when <NAME>_MODELS isn't set (e.g. when the first is busy: 503).
+DEFAULT_EXTRA = {
+    "gemini": ["gemini-3.1-flash-lite", "gemini-3.8-flash"],
 }
 ANON_KEY = "anonymous"   # placeholder key: no Authorization header is sent
 
@@ -138,6 +143,7 @@ def load_settings() -> Settings:
         keys = [k.strip() for k in raw.split(",") if k.strip()]
         keys += [k for k in stored.get(name, []) if k not in keys]
         extra = [m.strip() for m in os.environ.get(f"{up}_MODELS", "").split(",") if m.strip()]
+        extra = extra or list(DEFAULT_EXTRA.get(name, []))
         if name in KEYLESS and not keys:
             if not keyless_on:
                 continue

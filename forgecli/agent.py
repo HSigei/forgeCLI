@@ -12,7 +12,7 @@ import platform
 import threading
 import time
 
-from . import attach, guards, images, keyvault, parallel, roster
+from . import attach, guards, images, keyvault, novabridge, parallel, roster
 from . import brief as briefmod
 from . import memory as memorymod
 from . import quality as qualitymod
@@ -207,6 +207,7 @@ class Agent:
         self.router = router or Router(settings, ui.log)
         self.tools = Tools(ui, settings.shell, settings.auto_approve, getattr(settings, 'approval', 'smart'))
         self.router.usage = self.tools.usage
+        self.tools.nova.set_router(self.router)
         self.ctx_tokens = 0   # size of the last request
         self.last_turn_ok = False
         self.skills: dict[str, skillmod.Skill] = {}
@@ -249,6 +250,8 @@ class Agent:
             self.ui.warn(f"could not load persistent memory: {exc}")
             memory = ""
         text = system_prompt(self.settings, self._active_skills(), memory)
+        if novabridge.code_mode() != "off":
+            text += "\n\n" + self.tools.nova.code_prompt(SCHEMAS)
         if self.team and self.coordinator:
             workers = roster.build(self.router)
             text += (
@@ -370,8 +373,15 @@ class Agent:
             schemas += self.tools.extra_schemas(query)
         if self.plan_mode:
             schemas = [schema for schema in schemas
-                       if schema["function"]["name"] in READ_ONLY | {"find_skill", "use_skill"}]
+                       if schema["function"]["name"] in self._read_only()]
+        elif novabridge.code_mode() != "off":
+            if novabridge.code_mode() == "only":   # one tool that reaches all the others: small requests
+                schemas = [s for s in schemas if s["function"]["name"] in ("ask_user", "run_parallel", "delegate")]
+            schemas = schemas + [novabridge.code_schema()]
         return schemas
+
+    def _read_only(self) -> set[str]:
+        return READ_ONLY | {"find_skill", "use_skill"} | self.tools.nova.readonly()
 
     def _goal(self) -> str:
         if self._turn_goal:
@@ -448,6 +458,7 @@ class Agent:
         self.save()
         self.tools.checkpoints.clear()
         self.session = Session()
+        self.tools.nova.reset_code(self)   # run_code variables belong to one conversation
         self.messages = [self._system()]
 
     def load(self, session: Session) -> None:
@@ -642,8 +653,18 @@ class Agent:
         if guarded:
             self.ui.info("kept the tests as they are — the fix goes in the code")
             return guarded
-        if self.plan_mode and name not in READ_ONLY | {"find_skill", "use_skill"}:
+        if self.plan_mode and name not in self._read_only():
             return f"Error: {name} is unavailable in read-only plan mode."
+        if name == "run_code":
+            try:
+                code = str(json.loads(raw_args or "{}").get("code") or "")
+            except (ValueError, AttributeError):
+                code = ""
+            if not code.strip():
+                return "Error: run_code needs 'code' (Python source)."
+            result = self.tools.nova.run_code(self, code, SCHEMAS + self.tools.extra_schemas(self._goal()))
+            self.tools.ledger.add(name, {"code": code[:200]}, result)
+            return result
         if name == "ask_user":
             try:
                 args = json.loads(raw_args or "{}")

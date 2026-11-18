@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "forgecommandline"
-version = "0.9.0"
+version = "0.9.1"
 description = "A terminal coding agent with provider failover"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -18,6 +18,14 @@ dependencies = [
     "graphifyy>=0.9.100",
 ]
 
+[project.optional-dependencies]
+# Nova's desktop tools (screen, mouse/keyboard, browser automation, documents, media). Each tool
+# loads its library only when used, so Forge runs without these.
+desktop = ["psutil", "mss", "Pillow", "numpy", "playwright", "pypdf", "python-docx", "python-pptx", "yt-dlp"]
+# /voice: speech recognition on this PC, replies read aloud
+voice = ["faster-whisper", "sounddevice", "numpy", "piper-tts"]
+all = ["forgecommandline[desktop,voice]"]
+
 [project.scripts]
 forge = "forgecli.cli:main"
 
@@ -27,10 +35,11 @@ Source = "https://github.com/HSigei/forgeCLI"
 Issues = "https://github.com/HSigei/forgeCLI/issues"
 
 [tool.setuptools]
-packages = ["forgecli"]
+packages = ["forgecli", "forgecli.nova", "forgecli.nova.core", "forgecli.nova.tools"]
 
 [tool.setuptools.package-data]
 forgecli = ["courier_hd_data.bin", "scene_data.bin", "tiger_data.bin", "cub_data.bin"]
+"forgecli.nova" = ["scripts/*.ps1"]
 
 [tool.setuptools.data-files]
 "skills/commit" = ["skills/commit/SKILL.md"]

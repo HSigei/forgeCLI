@@ -168,6 +168,31 @@ quick background check and its track record. `/roster` shows each score and why.
 ## Features
 
 <details>
+<summary><b>Desktop tools, code mode and voice</b> (new in 0.9.1)</summary>
+
+Forge now carries Nova's toolset: screen reading and OCR, mouse and keyboard control, its own
+browser automation, apps and windows, reminders, long-term memory, documents (PDF, Word,
+PowerPoint), images, media, `run_tests`, `code_outline`, `find_symbol` and more. Only the tools that
+match your request are offered to the model. Coding requests get the dev helpers.
+
+**Code mode.** The model can also call `run_code`, which runs a short sandboxed Python script.
+The script can call every tool (`tools.read_file(...)`, `tools.click(...)`), loop over the results,
+and print just the answer, so big tool outputs never reach the context window. Variables persist
+until `/new`. Approvals still apply to every tool call made inside the script.
+Set `FORGE_CODE_MODE=off` to disable it, or `only` to offer nothing but `run_code`.
+
+**Voice.** `/voice` records one request, transcribes it on your PC with faster-whisper and reads
+the reply aloud (Piper or the Windows voice). `/voice on` keeps listening until you say "stop" or
+go quiet. `/voice mute`, `/voice unmute` and `/voice status` do what they say.
+
+Extras: `pip install "forgecommandline[desktop]"`, `[voice]` or `[all]`. Without them, each
+tool tells you what to install the first time it's used. Nova's data (memory, reminders, models)
+lives in `~/.forge/nova`. Set `FORGE_NOVA_HOME` to put it somewhere else, or `FORGE_NOVA=0` to
+turn the tools off.
+
+</details>
+
+<details>
 <summary><b>Approvals</b> — what runs on its own and what asks</summary>
 
 | Mode | Behaviour |
