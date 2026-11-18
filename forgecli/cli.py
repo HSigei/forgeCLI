@@ -1045,7 +1045,8 @@ class App:
         self.ui.info("questions and general thoughts: https://github.com/HSigei/forgeCLI/discussions")
 
     def cmd_update(self, arg):
-        """/update check: say whether a newer version exists. /update: install it. Returns False to quit."""
+        """/update check: say whether a newer version exists. /update: offer to install it.
+        Returns False to quit (Windows closes Forge so the new version can replace it)."""
         from . import update as upd
         self.ui.info("checking pypi.org for the newest Forge…")
         latest = upd.fetch()
@@ -1053,35 +1054,83 @@ class App:
             self.ui.error("couldn't reach pypi.org — check your connection and try again")
             return True
         if not upd.newer(latest):
-            self.ui.info(f"you're up to date: Forge {__version__} is the newest version")
+            self.ui.ok(f"you're on the newest Forge ({__version__}) — nothing to do")
             return True
-        kind, cmd = upd.how_installed()
-        self.ui.info(f"Forge {latest} is out (you have {__version__})")
         if arg.lower() in ("check", "status"):
-            self.ui.info("type /update to install it")
+            self.ui.info(f"Forge {latest} is out (you have {__version__}) — type /update to get it")
             return True
+        return self.offer_update(latest)
+
+    UPDATE_YES = ("y", "yes", "yeah", "yep", "sure", "ok", "okay", "update", "go", "")
+    UPDATE_NO = ("n", "no", "nope", "later", "not now", "skip", "maybe later")
+
+    def offer_update(self, latest: str) -> bool:
+        """A big, friendly card that can't be missed, then a plain yes/no.
+        In the chat the message box takes the answer (see _docked_loop); otherwise it's asked here.
+        Returns False when Forge should close for the update."""
+        from . import update as upd
+        kind, cmd = upd.how_installed()
+        lines = [Text.assemble(("✨  A fresh Forge is ready: ", "bold"), (f"v{latest}", "bold #4ade80"),
+                               (f"   (you have v{__version__})", "faint"))]
         if kind == "exe":
-            self.ui.info(f"download the new forge.exe zip from {RELEASES} and replace the old forge.exe")
+            lines += [Text(""), Text("Grab the new forge.exe zip and swap it in for the old one:"),
+                      Text(f"  {RELEASES}", style="accent")]
+        elif kind == "source" or not cmd:
+            lines += [Text(""), Text("This Forge runs from a source folder, so a quick  git pull  there brings it up to date.")]
+        else:
+            lines += [Text(""), Text("It only takes a moment, and your conversation is saved, so you can pick up right where you left off."),
+                      Text(""), Text.assemble(("  y ", "bold reverse #4ade80"), ("  yes, update now      ", "bold"),
+                                              ("  n ", "bold reverse #94a3b8"), ("  maybe later", ""))]
+        console.print()
+        console.print(Panel(Group(*lines), title=Text(" ⬆  update available ", style="bold reverse #fbbf24"),
+                            title_align="center", border_style="bold #fbbf24", box=box.HEAVY,
+                            padding=(1, 3), expand=True))
+        if kind == "exe" or kind == "source" or not cmd:
             return True
-        if kind == "source" or not cmd:
-            self.ui.info("this Forge runs from a source folder: update it with  git pull  in that folder")
+        label = f"✨ Update Forge to v{latest} now?  y = yes please · n = maybe later"
+        if self.ui.docked:
+            # The message box is the only way to type here, so the answer arrives there; asking
+            # with a blocking prompt from this thread would freeze the chat.
+            self.ui.pending = {"label": label, "event": threading.Event(), "answer": "",
+                               "update": (latest, cmd)}
             return True
+        while True:
+            try:
+                ans = console.input(f"  [bold #fbbf24]Update now?[/] [bold]y[/][muted]es[/] · [bold]n[/][muted]o[/] [accent]›[/] ")
+            except (EOFError, KeyboardInterrupt):
+                ans = "n"
+            r = self._update_answer(ans, latest, cmd)
+            if r is not None:
+                return r
+
+    def _update_answer(self, text: str, latest: str, cmd: list[str]) -> bool | None:
+        """True = carry on, False = close Forge for the update, None = not a yes or a no yet."""
+        word = text.strip().lower().strip(".!")
+        first = word.split()[0].strip(",") if word else ""
+        if word in self.UPDATE_NO or first in self.UPDATE_NO:
+            self.ui.info("No problem — whenever you're ready, just type /update ✨")
+            return True
+        if word not in self.UPDATE_YES and first not in self.UPDATE_YES:
+            self.ui.info("Just a quick y (update now) or n (maybe later) first 🙂")
+            return None
+        return self._install_update(latest, cmd)
+
+    def _install_update(self, latest: str, cmd: list[str]) -> bool:
+        from . import update as upd
         line = " ".join(cmd)
         if os.name == "nt":
-            if self.ui.confirm("Close Forge and update now?", line, "installs the new version")[0] == "n":
-                return True
             if upd.run_after_exit(cmd):
-                self.ui.info("Forge will close; the update runs in a new window. Your conversation is saved (forge -c).")
+                self.ui.ok(f"Lovely! Forge will close for a moment while v{latest} installs in a new window. "
+                           "Your conversation is saved — type  forge -c  to carry on.")
                 return False
-            self.ui.error(f"couldn't start the updater — close Forge and run:  {line}")
+            self.ui.error(f"Hmm, the updater wouldn't start. Close Forge and run this instead:  {line}")
             return True
-        if self.ui.confirm("Update Forge now?", line, "installs the new version")[0] == "n":
-            return True
+        self.ui.info(f"Updating to v{latest}…")
         code = subprocess.run(cmd).returncode
         if code == 0:
-            self.ui.info(f"updated to {latest} — restart Forge to use it (forge -c continues this conversation)")
+            self.ui.ok(f"All done — you're on v{latest}. Restart Forge to use it (forge -c continues this conversation).")
         else:
-            self.ui.error(f"the update failed (exit {code}) — try running it yourself:  {line}")
+            self.ui.error(f"The update didn't finish (exit {code}). You can run it yourself:  {line}")
         return True
 
     def cmd_ads(self, arg):
@@ -1565,11 +1614,20 @@ class App:
             self.ui.rule(replay.title or replay.id)
             self.ui.replay(replay.messages)
         docked = getattr(prompt, "docked", False)
+        try:
+            from . import update as upd
+            newest = upd.cached() if upd.enabled() else None
+        except Exception:
+            newest = None
         if docked:
             from prompt_toolkit.patch_stdout import patch_stdout
             self.ui.docked = True
+            if newest:
+                self.offer_update(newest)
             with patch_stdout(raw=True):   # output from the task thread prints above the box
                 return self._docked_loop(prompt)
+        if newest and not self.offer_update(newest):
+            return self.goodbye()
         while True:
             try:
                 text = prompt()
@@ -1604,6 +1662,16 @@ class App:
                     self.stop()
                 return self.goodbye()
             text = text.replace(BOM, "").strip()  # PowerShell pipes can prepend one
+            offer = (self.ui.pending or {}).get("update")
+            if offer:                    # the update card is waiting for a yes or a no
+                if text.split()[:1] and text.split()[0].lower() in ("/exit", "/quit", "/q"):
+                    return self.goodbye()
+                r = self._update_answer(text, *offer)
+                if r is not None:
+                    self.ui.pending = None
+                if r is False:
+                    return self.goodbye()
+                continue
             if self.ui.pending:          # Forge asked something: this is the answer…
                 word = text.split()[0].lower() if text.startswith("/") and not text.startswith("//") else ""
                 if word in ("/exit", "/quit", "/q"):          # …unless it's a way out
