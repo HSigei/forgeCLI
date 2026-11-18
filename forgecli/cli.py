@@ -1617,6 +1617,13 @@ class App:
         try:
             from . import update as upd
             newest = upd.cached() if upd.enabled() else None
+            fresh = upd.just_updated()
+            if fresh:
+                self.ui.ok(f"✨ Forge is up to date: you're now on v{fresh}. Enjoy!")
+            if newest and upd.auto_update(newest):
+                self.ui.info(f"✨ Forge v{newest} is ready — it installs quietly when you close Forge "
+                             "(FORGE_AUTO_UPDATE=0 turns this off)")
+                newest = None                  # no card: it's already taken care of
         except Exception:
             newest = None
         if docked:

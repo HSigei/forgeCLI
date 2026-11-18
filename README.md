@@ -68,9 +68,12 @@ When a step is risky, Forge stops and asks:
 
 The command is `forge` whichever way you install it.
 
-**Updates.** Forge checks PyPI once a day in the background. When there's a newer version, the next
-start opens with a big "update available" card: answer `y` to update now or `n` for later.
-Nothing installs without that yes. `/update` (or `forge --update`) brings the card back any time. It picks `pipx upgrade` or `pip install --upgrade` to match
+**Updates.** Forge keeps itself up to date. It checks PyPI once a day in the background, and when
+there's a newer release it installs it quietly right after you close Forge (so nothing is replaced
+while it's running). The next start greets you with "you're now on vX". Turn this off with
+`FORGE_AUTO_UPDATE=0`. Forge then shows an "update available" card instead, and you answer `y` or
+`n`. The card also appears if a quiet update fails twice. `/update` (or `forge --update`) updates
+straight away. It picks `pipx upgrade` or `pip install --upgrade` to match
 how you installed. On Windows Forge closes and the update finishes in a new window; your conversation
 is saved, so `forge -c` picks it up. `/update check` only checks. The `.exe` build points you to the
 new zip on Releases. Turn the daily check off with `FORGE_UPDATE_CHECK=0`.
