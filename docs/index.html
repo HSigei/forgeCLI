@@ -736,13 +736,13 @@
           <li><div><p>On the laptop, start Forge and type <code>/remote</code>. It shows a QR code.</p></div></li>
           <li><div><p>Get the app and scan the code. That's the whole setup.</p>
             <div class="phone-actions">
-              <a class="btn btn-primary" href="https://github.com/HSigei/forgeCLI/releases/latest/download/forge-remote.apk">Android app (APK)</a>
-              <a class="btn btn-ghost" href="app/">Open in the browser</a>
+              <a class="btn btn-primary" id="ph-android" href="https://github.com/HSigei/forgeCLI/releases/latest/download/forge-remote.apk">Android app (APK)</a>
+              <a class="btn btn-ghost" id="ph-ios" href="app/">iPhone &amp; browser</a>
             </div>
           </div></li>
           <li><div><p>Leave Forge open. Your phone reaches it from anywhere, over any network.</p></div></li>
         </ol>
-        <p class="note"><b>End-to-end encrypted.</b> The key lives only in the QR code, on your laptop and your phone; the relay in between passes scrambled bytes it can't read. <code>/remote off</code> stops it, <code>/remote new</code> unpairs every phone. On iPhone, open the browser version and use Share → Add to Home Screen.</p>
+        <p class="note"><b>End-to-end encrypted.</b> The key lives only in the QR code, on your laptop and your phone; the relay in between passes scrambled bytes it can't read. <code>/remote off</code> stops it, <code>/remote new</code> unpairs every phone. On iPhone, scan the code with the Camera app, then Share → Add to Home Screen: it opens full screen with a glass look and stays paired.</p>
       </div>
       <figure class="phone-shot"><img src="media/remote-phone.webp" width="780" height="1688" loading="lazy" alt="Forge Remote on a phone: Forge asks to run a command and the phone shows Yes, Always and No buttons"></figure>
     </div>
@@ -852,6 +852,11 @@
     if (os === "linux") { first.textContent = "Install on Linux"; first.removeAttribute("download"); first.href = "#install"; }
     var tab = os === "mac" || os === "linux" ? "t-mac" : null;
     if (tab) document.addEventListener("DOMContentLoaded", function () { var t = document.getElementById(tab); if (t) t.click(); });
+    var ios = /iphone|ipad|ipod/i.test(ua) || (/mac/i.test(plat) && navigator.maxTouchPoints > 1);
+    if (ios) {
+      var pi = document.getElementById("ph-ios"), pa = document.getElementById("ph-android");
+      if (pi && pa) { pi.className = "btn btn-primary"; pa.className = "btn btn-ghost"; pi.textContent = "Open on this iPhone"; pa.parentNode.insertBefore(pi, pa); }
+    }
     if (os === "phone") {
       var m = document.getElementById("dl-meta"); if (m) m.textContent = "On your phone? Get Forge Remote to control your laptop from here.";
       var bar = document.getElementById("mbar");

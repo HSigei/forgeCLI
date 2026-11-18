@@ -177,8 +177,8 @@ quick background check and its track record. `/roster` shows each score and why.
 
 Type `/remote` (or start with `forge --remote`) and scan the QR code with
 [Forge Remote](https://github.com/HSigei/forgeCLI/releases/latest/download/forge-remote.apk) (Android)
-or open [forgecli.pages.dev/app](https://forgecli.pages.dev/app/) on any phone (iPhone: Share → Add
-to Home Screen). From the phone you can send tasks, answer Forge's questions (Yes / Always / No),
+or open [forgecli.pages.dev/app](https://forgecli.pages.dev/app/) on any phone. On iPhone, scan the QR code
+with the Camera app, then Share → Add to Home Screen: it runs full screen with an iOS glass theme. From the phone you can send tasks, answer Forge's questions (Yes / Always / No),
 stop it, and take a screenshot of the laptop. It works over any network: both sides connect out to a
 small relay, and everything is end-to-end encrypted (AES-GCM) with a key that only exists in the QR
 code, your laptop (`~/.forge/remote.json`) and your phone. The relay only forwards scrambled bytes.

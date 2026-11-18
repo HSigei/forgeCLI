@@ -6,15 +6,32 @@
 <meta name="theme-color" content="#0a0912">
 <meta name="color-scheme" content="dark">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Forge">
+<meta name="format-detection" content="telephone=no">
 <title>Forge Remote</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<script>
+(function () {
+  var d = document.documentElement;
+  var ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  var standalone = navigator.standalone === true || matchMedia("(display-mode: standalone)").matches;
+  var look = null; try { look = localStorage.getItem("forge.look"); } catch (e) {}
+  if (ios) d.classList.add("ios");
+  if (standalone) d.classList.add("standalone");
+  if (look === "glass" || (look !== "solid" && ios)) d.classList.add("glass");
+  // iOS gives a Home Screen app its own storage, apart from Safari's, so the pairing has to travel in the
+  // address it saves. Without a manifest, "Add to Home Screen" keeps this page's own URL (#pair=… included).
+  if (ios && !standalone) { var m = document.querySelector('link[rel="manifest"]'); if (m) m.remove(); }
+})();
+</script>
 <style>
   :root {
     --bg: #0a0912; --panel: #14111f; --panel-2: #1b1730; --line: #2a2540; --line-2: #3b3460;
-    --text: #ece9f7; --muted: #a19bbd; --dim: #6f6990;
+    --text: #ece9f7; --muted: #a19bbd; --dim: #8b85ad;
     --accent: #ff4fd8; --accent-ink: #14001a; --accent-2: #3ef0ff;
     --ok: #4ade80; --warn: #fbbf24; --err: #f87171;
     --mono: ui-monospace, "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
@@ -22,10 +39,18 @@
     --safe-t: env(safe-area-inset-top, 0px); --safe-b: env(safe-area-inset-bottom, 0px);
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 15px/1.5 var(--sans); }
-  body { display: flex; flex-direction: column; overflow: hidden;
+  html, body { margin: 0; height: var(--app-h, 100%); background: var(--bg); color: var(--text); font: 15px/1.5 var(--sans);
+               overscroll-behavior: none; -webkit-text-size-adjust: 100%; }
+  body { display: flex; flex-direction: column; overflow: hidden; position: relative;
          background: radial-gradient(70% 40% at 80% 0%, #2a0f3a 0%, transparent 70%), var(--bg); }
-  button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; }
+  button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer;
+           -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  html.ios textarea, html.ios input { font-size: 16px; }   /* smaller text makes iOS zoom in on focus */
+  html.ios body { font: -apple-system-body; line-height: 1.45; }           /* follows the iPhone's Text Size setting */
+  html.kb { --safe-b: 0px; }                                 /* keyboard up: no home-bar gap needed */
+  .ios-only { display: none; }
+  html.ios .ios-only { display: block; }
+  #dock { flex: none; }
   .hidden { display: none !important; }
 
   /* top bar */
@@ -40,7 +65,7 @@
   .dot.on { background: var(--ok); box-shadow: 0 0 10px var(--ok); }
   .dot.busy { background: var(--accent); box-shadow: 0 0 10px var(--accent); animation: pulse 1s infinite; }
   @keyframes pulse { 50% { opacity: .35; } }
-  .icon-btn { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center;
+  .icon-btn { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center;
               border: 1px solid var(--line); background: var(--panel); }
   .icon-btn:active { transform: scale(.96); }
   .icon-btn svg { width: 20px; height: 20px; }
@@ -125,8 +150,91 @@
   #menu { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 8; display: flex; align-items: flex-end; }
   #menu .sheet { width: 100%; background: var(--panel); border-top: 1px solid var(--line-2); border-radius: 20px 20px 0 0;
                  padding: 14px 14px calc(18px + var(--safe-b)); display: grid; gap: 8px; }
-  #menu .sheet button { text-align: left; padding: 14px; border-radius: 12px; background: var(--panel-2); }
+  #menu .sheet button { text-align: left; padding: 14px; min-height: 48px; border-radius: 12px; background: var(--panel-2); }
+  #menu .sheet { transition: transform .25s cubic-bezier(.2, .8, .2, 1); touch-action: none; }
+  #menu .grab { justify-self: center; width: 36px; height: 5px; border-radius: 3px; background: var(--line-2); margin: -4px 0 4px; }
+  #menu #mClose { text-align: center; font-weight: 600; margin-top: 4px; }
   #menu .sheet .danger { color: var(--err); }
+
+  /* Add to Home Screen (iPhone, in Safari) */
+  #a2hs { margin: 0 12px 8px; padding: 12px 14px; border-radius: 16px; background: var(--panel-2); border: 1px solid var(--line-2);
+          display: flex; gap: 12px; align-items: flex-start; font-size: 13.5px; }
+  #a2hs b { display: block; font-size: 14.5px; margin-bottom: 2px; }
+  #a2hs p { margin: 0; color: var(--muted); flex: 1; }
+  #a2hs svg { width: 16px; height: 16px; vertical-align: -3px; color: var(--accent-2); }
+  #a2hs button { min-height: 44px; padding: 6px 12px; border-radius: 10px; background: var(--panel); border: 1px solid var(--line-2); font-weight: 600; font-size: 13px; }
+
+  /* ---------- glass look (iPhone default; Menu → Look on others) ---------- */
+  html.glass {
+    --g-fill: rgba(255, 255, 255, .075); --g-fill-2: rgba(255, 255, 255, .11); --g-line: rgba(255, 255, 255, .16);
+    --g-blur: blur(24px) saturate(180%);
+    --g-shine: inset 0 1px 0 rgba(255, 255, 255, .22), inset 0 -1px 0 rgba(255, 255, 255, .05), 0 12px 32px rgba(0, 0, 0, .35);
+  }
+  html.glass body { background: #07060e; }
+  html.glass body::before {   /* soft colour for the glass to bend */
+    content: ""; position: fixed; inset: -25%; pointer-events: none; z-index: 0; filter: blur(40px);
+    background: radial-gradient(32% 26% at 18% 22%, #ff4fd866, transparent 70%),
+                radial-gradient(30% 26% at 86% 38%, #3ef0ff40, transparent 70%),
+                radial-gradient(40% 32% at 46% 88%, #7c3aed66, transparent 70%);
+    animation: drift 26s ease-in-out infinite alternate;
+  }
+  @keyframes drift { to { transform: translate3d(4%, -3%, 0) rotate(8deg); } }
+  @media (prefers-reduced-motion: reduce) { html.glass body::before { animation: none; } }
+  html.glass #pair, html.glass #feed { position: relative; z-index: 1; }
+
+  html.glass header, html.glass footer, html.glass #ask, html.glass #a2hs, html.glass #menu .sheet, html.glass .toast,
+  html.glass .steps li, html.glass .ghost, html.glass .paste input, html.glass .icon-btn {
+    background: var(--g-fill); border: 1px solid var(--g-line); box-shadow: var(--g-shine);
+    -webkit-backdrop-filter: var(--g-blur); backdrop-filter: var(--g-blur);
+  }
+  /* floating bars: the conversation scrolls underneath them */
+  html.glass header { position: absolute; z-index: 3; top: calc(8px + var(--safe-t)); left: 10px; right: 10px;
+                      padding: 8px 8px 8px 16px; border-radius: 26px; }
+  html.glass body::after { content: ""; position: fixed; z-index: 2; left: 0; right: 0; top: 0; height: calc(var(--safe-t) + 14px);
+                           background: linear-gradient(#07060ecc, transparent); pointer-events: none; }
+  html.glass #dock { position: absolute; z-index: 3; left: 0; right: 0; bottom: 0; padding: 0 10px calc(10px + var(--safe-b)); }
+  html.glass #ask, html.glass #a2hs { margin: 0 0 8px; border-radius: 22px; }
+  html.glass footer { padding: 6px; border-radius: 30px; align-items: flex-end; }
+  html.glass #feed { padding-top: calc(var(--top-h, 70px) + 12px); padding-bottom: calc(var(--dock-h, 70px) + 12px); }
+  html.glass textarea { background: transparent; border: 0; padding: 11px 12px; }
+  html.glass textarea:focus { border: 0; }
+  html.glass .icon-btn { border-radius: 50%; background: var(--g-fill-2); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .2); }
+  html.glass .send { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .45), 0 4px 16px color-mix(in srgb, var(--accent) 45%, transparent); }
+
+  html.glass .ev.user { background: linear-gradient(135deg, #ff5fdc, #b65cff); color: #fff; border-radius: 20px 20px 6px 20px;
+                        box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35), 0 6px 18px rgba(184, 92, 255, .3); }
+  html.glass .ev.assistant { background: var(--g-fill); border-color: var(--g-line); border-radius: 6px 20px 20px 20px;
+                             box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12); }
+  html.glass .ev.result, html.glass .ev pre, html.glass .ev code { background: rgba(0, 0, 0, .3); border-color: var(--g-line); }
+  html.glass .ev.plan, html.glass .ev.todos { background: var(--g-fill-2); border-color: var(--g-line); border-radius: 18px; }
+  html.glass .ev.shot img { border-radius: 18px; border-color: var(--g-line); }
+
+  html.glass #ask { background: rgba(251, 191, 36, .1); border-color: rgba(251, 191, 36, .45); }
+  html.glass .choice { border-radius: 16px; background: var(--g-fill-2); border-color: var(--g-line); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .15); }
+  html.glass .choice.yes { background: linear-gradient(#5ee89a, #34c46e); color: #03200e; }
+  html.glass .choice.no { background: rgba(248, 113, 113, .18); border-color: rgba(248, 113, 113, .4); }
+
+  /* floating chrome sits over the conversation: tint it like iOS "regular material" so text under it never competes */
+  html.glass header, html.glass footer, html.glass #a2hs, html.glass #menu .sheet, html.glass .toast {
+    background: linear-gradient(rgba(255, 255, 255, .08), rgba(255, 255, 255, .04)), rgba(16, 13, 26, .74);
+  }
+  html.glass #menu .sheet { background: linear-gradient(rgba(255, 255, 255, .07), rgba(255, 255, 255, .03)), rgba(20, 17, 31, .92); }
+  html.glass #ask { background: linear-gradient(rgba(251, 191, 36, .12), rgba(251, 191, 36, .08)), rgba(16, 13, 26, .7); }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    html.glass header, html.glass footer, html.glass #a2hs, html.glass #menu .sheet, html.glass .toast, html.glass #ask {
+      background-color: rgba(16, 13, 26, .96);
+    }
+  }
+  html.glass #menu { background: rgba(0, 0, 0, .3); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
+  html.glass #menu .sheet { margin: 0 10px calc(10px + var(--safe-b)); border-radius: 30px; padding: 10px; }
+  html.glass #menu .sheet button { background: var(--g-fill); border-radius: 18px; }
+  html.glass .toast { border-radius: 18px; bottom: calc(var(--dock-h, 70px) + 12px); }
+
+  html.glass .steps li { border-radius: 18px; }
+  html.glass .big { border-radius: 18px; background: linear-gradient(135deg, #ff5fdc, #b65cff); color: #fff;
+                    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35), 0 8px 24px rgba(184, 92, 255, .35); }
+  html.glass .ghost, html.glass .paste input { border-radius: 16px; }
+  html.glass #scanner { border-radius: 26px; border-color: rgba(255, 255, 255, .5); }
 </style>
 </head>
 <body>
@@ -142,8 +250,9 @@
   </ol>
   <div id="scanner" class="hidden"><video id="video" playsinline muted></video></div>
   <button class="big" id="scanBtn">Scan the QR code</button>
+  <p class="note ios-only" id="iosTip">On iPhone you can also just point the Camera app at the code and tap the link it shows.</p>
   <div class="paste">
-    <input id="pasteIn" placeholder="…or paste the link Forge shows" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <input id="pasteIn" placeholder="…or paste the link" autocomplete="off" autocapitalize="off" spellcheck="false">
     <button class="ghost" id="pasteBtn">Pair</button>
   </div>
   <p class="note">End-to-end encrypted: only your laptop and this phone hold the key. The relay in between only ever sees scrambled bytes.</p>
@@ -163,21 +272,29 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
   </button>
 </header>
-<main id="feed" class="hidden"></main>
-<div id="ask" class="hidden">
+<main id="feed" class="hidden" role="log" aria-live="polite" aria-label="Conversation with Forge"></main>
+<div id="dock">
+<div id="a2hs" class="hidden" role="note">
+  <p><b>Put Forge on your Home Screen</b>Tap <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="Share"><path d="M12 15V3M8 7l4-4 4 4"/><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg> Share, then <b style="display:inline;font-size:inherit">Add to Home Screen</b>. It opens full screen and stays paired.</p>
+  <button id="a2hsOk">Got it</button>
+</div>
+<div id="ask" class="hidden" role="alert">
   <p id="askText"></p>
   <div class="choices" id="choices"></div>
 </div>
 <footer id="composer" class="hidden">
-  <textarea id="msg" rows="1" placeholder="Ask Forge to do something…"></textarea>
+  <textarea id="msg" rows="1" placeholder="Ask Forge to do something…" enterkeyhint="send"></textarea>
   <button class="send" id="sendBtn" aria-label="Send">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
   </button>
 </footer>
+</div>
 
 <div id="menu" class="hidden">
-  <div class="sheet">
+  <div class="sheet" role="dialog" aria-label="Menu">
+    <div class="grab" aria-hidden="true"></div>
     <button id="mSync">Refresh</button>
+    <button id="mLook">Look: Glass</button>
     <button id="mClear">Clear this screen</button>
     <button id="mUnpair" class="danger">Unpair this phone</button>
     <button id="mClose">Close</button>
@@ -196,7 +313,9 @@ const store = {
   del(k) { try { localStorage.removeItem(k); } catch {} },
 };
 let secret = null, key = null, ws = null, laptop = false, busy = false, asking = null, retry = 1000, pingT = null;
-let streamEl = null;
+let lastMsg = 0;
+const root = document.documentElement;
+const IOS = root.classList.contains("ios"), STANDALONE = root.classList.contains("standalone");
 
 // ---------- crypto (same scheme as forgecli/remote.py) ----------
 const b64u = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -231,8 +350,9 @@ function secretFrom(text) {
 }
 async function pairWith(s) {
   stopScan();
-  store.set("forge.secret", s);
-  history.replaceState(null, "", location.pathname);
+  store.set("forge.secret", s); store.del("forge.unpaired");
+  // in iPhone Safari the link stays in the address bar, so "Add to Home Screen" saves the pairing with it
+  history.replaceState(null, "", location.pathname + (IOS && !STANDALONE ? "#pair=" + s : ""));
   await begin(s);
 }
 let scanStream = null, scanning = false;
@@ -284,15 +404,28 @@ async function connect() {
   try { ws = new WebSocket(`${RELAY}/room/${room}?role=phone`); } catch { return later(); }
   ws.onopen = () => { retry = 1000; send({ t: "hello" });
     clearInterval(pingT); pingT = setInterval(() => { try { ws.send("ping"); } catch {} }, 25000); };
-  ws.onmessage = async (e) => { if (e.data === "pong") return; const m = await unseal(e.data); if (m) handle(m); };
+  ws.onmessage = async (e) => { lastMsg = Date.now(); if (e.data === "pong") return; const m = await unseal(e.data); if (m) handle(m); };
   ws.onclose = () => { clearInterval(pingT); laptop = false; setState("offline — reconnecting…"); later(); };
   ws.onerror = () => {};
 }
 function later() { setTimeout(() => { if (secret && (!ws || ws.readyState > 1)) connect(); }, retry); retry = Math.min(retry * 2, 20000); }
 async function send(m) { if (ws && ws.readyState === 1) { ws.send(await seal(m)); return true; } return false; }
-document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible" && secret) { if (!ws || ws.readyState > 1) connect(); else send({ t: "sync" }); }
-});
+function wake() {
+  if (!secret) return;
+  if (!ws || ws.readyState > 1) return connect();
+  // iOS freezes the app in the background and can hand back a socket that looks open but is dead
+  const asked = Date.now();
+  try { ws.send("ping"); } catch {}
+  send({ t: "sync" });
+  setTimeout(() => {
+    if (lastMsg >= asked || !secret) return;
+    if (ws) { ws.onclose = null; try { ws.close(); } catch {} }
+    clearInterval(pingT); laptop = false; retry = 1000; connect();
+  }, 4000);
+}
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") wake(); });
+window.addEventListener("pageshow", (e) => { if (e.persisted) wake(); });
+window.addEventListener("online", wake);
 
 function handle(m) {
   switch (m.t) {
@@ -301,7 +434,7 @@ function handle(m) {
       if (laptop) send({ t: "hello" });
       setState(); break;
     case "hello":
-      laptop = true; $("feed").innerHTML = "";
+      laptop = true; $("feed").innerHTML = ""; offerHomeScreen();
       (m.history || []).forEach(addEvent);
       status(m);
       if (!(m.history || []).length) emptyNote();
@@ -414,8 +547,54 @@ $("mSync").onclick = () => { send({ t: "sync" }); $("menu").classList.add("hidde
 $("mClear").onclick = () => { $("feed").innerHTML = ""; $("menu").classList.add("hidden"); };
 $("mUnpair").onclick = () => {
   if (!confirm("Unpair this phone? You can pair again any time with /remote.")) return;
-  store.del("forge.secret"); secret = null; try { ws && ws.close(); } catch {} location.reload();
+  store.set("forge.unpaired", secret);   // a Home Screen app relaunches with the old link: don't re-pair from it
+  store.del("forge.secret"); secret = null; try { ws && ws.close(); } catch {}
+  location.replace(location.pathname);
 };
+function lookLabel() { $("mLook").textContent = "Look: " + (root.classList.contains("glass") ? "Glass" : "Solid"); }
+$("mLook").onclick = () => {
+  const glass = root.classList.toggle("glass");
+  store.set("forge.look", glass ? "glass" : "solid"); lookLabel(); measure();
+};
+lookLabel();
+if (IOS) $("mClose").textContent = "Cancel";
+// the menu is a sheet: drag it down to dismiss
+(function () {
+  const sheet = $("menu").querySelector(".sheet"); let y0 = null, dy = 0;
+  sheet.addEventListener("touchstart", (e) => { y0 = e.touches[0].clientY; dy = 0; sheet.style.transition = "none"; }, { passive: true });
+  sheet.addEventListener("touchmove", (e) => { if (y0 === null) return; dy = Math.max(0, e.touches[0].clientY - y0); sheet.style.transform = `translateY(${dy}px)`; }, { passive: true });
+  sheet.addEventListener("touchend", () => {
+    sheet.style.transition = ""; sheet.style.transform = "";
+    if (dy > 70) $("menu").classList.add("hidden");
+    y0 = null;
+  });
+})();
+
+function offerHomeScreen() {
+  if (IOS && !STANDALONE && !store.get("forge.a2hs")) $("a2hs").classList.remove("hidden");
+}
+$("a2hsOk").onclick = () => { store.set("forge.a2hs", "1"); $("a2hs").classList.add("hidden"); };
+
+// ---------- fitting the screen ----------
+// iOS ignores interactive-widget: follow the visible area so the keyboard never covers the composer
+const vv = window.visualViewport;
+function fit() {
+  const h = vv ? vv.height : innerHeight;
+  root.style.setProperty("--app-h", h + "px");
+  root.classList.toggle("kb", !!vv && innerHeight - h > 120);
+  if (IOS && window.scrollY) window.scrollTo(0, 0);
+}
+if (vv) { vv.addEventListener("resize", fit); vv.addEventListener("scroll", fit); }
+window.addEventListener("resize", fit);
+fit();
+// with the glass look the bars float: pad the conversation so nothing hides under them
+function measure() {
+  const top = $("top"), dock = $("dock");
+  root.style.setProperty("--top-h", (top.offsetHeight ? top.getBoundingClientRect().bottom : 0) + "px");
+  root.style.setProperty("--dock-h", dock.offsetHeight + "px");
+}
+if (window.ResizeObserver) { const ro = new ResizeObserver(measure); ro.observe($("top")); ro.observe($("dock")); }
+window.addEventListener("resize", measure);
 
 function toast(t) {
   const d = document.createElement("div"); d.className = "toast"; d.textContent = t; document.body.appendChild(d);
@@ -424,6 +603,8 @@ function toast(t) {
 function show(paired) {
   $("pair").classList.toggle("hidden", paired);
   ["top", "feed", "composer"].forEach((id) => $(id).classList.toggle("hidden", !paired));
+  if (!paired) $("a2hs").classList.add("hidden");
+  measure();
 }
 
 // ---------- start ----------
@@ -433,9 +614,12 @@ if ("serviceWorker" in navigator && location.protocol === "https:" && !/androidp
 window.forgePair = (link) => { const s = secretFrom(link); if (s && s !== secret) pairWith(s); };   // the Android app hands over pairing links here
 window.addEventListener("hashchange", () => window.forgePair(location.hash));   // a pairing link opened in this same tab
 (function () {
-  const fromLink = secretFrom(location.hash);
+  let fromLink = secretFrom(location.hash);
   const saved = store.get("forge.secret");
-  if (fromLink) pairWith(fromLink);
+  if (fromLink && fromLink === store.get("forge.unpaired")) fromLink = null;
+  // a Home Screen app always launches with the link it was saved with: a pairing made since then wins
+  if (STANDALONE && saved) begin(saved);
+  else if (fromLink) pairWith(fromLink);
   else if (saved) begin(saved);
   else show(false);
 })();
