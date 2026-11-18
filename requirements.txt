@@ -3,3 +3,6 @@ prompt_toolkit>=3.0.40
 PyYAML>=6.0
 keyring>=25.0
 graphifyy>=0.9.100
+websockets>=13
+cryptography>=42
+qrcode>=7.4

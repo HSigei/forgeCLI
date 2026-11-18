@@ -5,10 +5,11 @@
   ~/.forge/update.json, so the next start can say "update available" without waiting.
 - Never in pipes, scripts, CI or `forge -p`. FORGE_UPDATE_CHECK=0 turns the check off.
 - Auto-update (on unless FORGE_AUTO_UPDATE=0): when a newer release is known, a small hidden helper
-  waits for this Forge to close and then upgrades it with pip/pipx, so the files are never replaced
+  waits for this Forge to close and then upgrades it with pip/pipx/uv (the installed Windows .exe
+  fetches the newest ForgeSetup.exe and installs it quietly), so the files are never replaced
   while they're in use (Windows locks forge.exe). The next start says "Updated to vX". If the
   upgrade fails it's retried next time; after two failures Forge asks with the update card instead.
-  Never for the Windows .exe build, a source checkout, pipes, scripts or CI.
+  Never for a loose forge.exe outside the install folder, a source checkout, pipes, scripts or CI.
 - /update (or `forge --update`) installs straight away.
 """
 from __future__ import annotations
@@ -202,7 +203,7 @@ def auto_update(latest: str) -> bool:
     if not (auto_enabled() and newer(latest)) or auto_failing(latest):
         return False
     kind, cmd = how_installed()
-    if kind not in ("pip", "pipx") or not cmd:
+    if kind not in ("pip", "pipx", "uv", "exe") or not cmd:
         return False
     st = _load()
     auto = st.get("auto") or {}
@@ -217,8 +218,11 @@ def auto_update(latest: str) -> bool:
             kw["creationflags"] = 0x00000008 | 0x00000200 | 0x08000000   # detached, own group, no window
         else:
             kw["start_new_session"] = True
-        subprocess.Popen([sys.executable, "-I", "-c", _HELPER, str(os.getpid()), latest,
-                          str(_path()), json.dumps(cmd)], **kw)
+        if kind == "exe":    # no Python to run the helper with: the command waits for us itself
+            subprocess.Popen(cmd, **kw)
+        else:
+            subprocess.Popen([sys.executable, "-I", "-c", _HELPER, str(os.getpid()), latest,
+                              str(_path()), json.dumps(cmd)], **kw)
     except Exception:
         return False
     auto.update(pid=os.getpid(), version=latest, at=time.time())
@@ -242,12 +246,18 @@ def just_updated() -> str | None:
 def how_installed() -> tuple[str, list[str] | None]:
     """(kind, command). kind is 'pipx', 'pip', 'exe' or 'source' (no command for the last two)."""
     if getattr(sys, "frozen", False):
-        return "exe", None                 # the Windows forge.exe: new zip from GitHub Releases
+        from . import winsetup              # the Windows forge.exe: installed ones update themselves
+        return "exe", (winsetup.setup_cmd() if winsetup.installed_here() else None)
     here = pathlib.Path(__file__).resolve().parent
     if (here.parent / ".git").exists() or (here.parent / "pyproject.toml").exists() and \
             "site-packages" not in str(here):
         return "source", None
-    if "pipx" in sys.prefix.lower().replace("\\", "/"):
+    prefix = sys.prefix.lower().replace("\\", "/")
+    if "/uv/tools/" in prefix:
+        uv = shutil.which("uv")
+        if uv:
+            return "uv", [uv, "tool", "upgrade", PACKAGE]
+    if "pipx" in prefix:
         pipx = shutil.which("pipx")
         if pipx:
             return "pipx", [pipx, "upgrade", PACKAGE]

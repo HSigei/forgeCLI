@@ -63,6 +63,7 @@ COMMANDS = {
     "/github": "/github status · login · logout — GitHub sign-in (device code, no gh needed)",
     "/yes": "toggle auto-approve for everything",
     "/verbose": "toggle the key rotation / failover log",
+    "/remote": "/remote — control this Forge from your phone (scan the QR) · /remote off · /remote new (forget paired phones)",
     "/voice": "/voice — speak one request (replies read aloud) · /voice on — hands-free · /voice mute|unmute|status",
     "/update": "check for a newer Forge and install it: /update · /update check",
     "/feedback": "report a bug or suggest an idea: /feedback · /feedback idea · /feedback <what happened> · /feedback off",
@@ -1072,8 +1073,8 @@ class App:
         kind, cmd = upd.how_installed()
         lines = [Text.assemble(("✨  A fresh Forge is ready: ", "bold"), (f"v{latest}", "bold #4ade80"),
                                (f"   (you have v{__version__})", "faint"))]
-        if kind == "exe":
-            lines += [Text(""), Text("Grab the new forge.exe zip and swap it in for the old one:"),
+        if kind == "exe" and not cmd:
+            lines += [Text(""), Text("Download ForgeSetup.exe and open it — it installs Forge and keeps it updated:"),
                       Text(f"  {RELEASES}", style="accent")]
         elif kind == "source" or not cmd:
             lines += [Text(""), Text("This Forge runs from a source folder, so a quick  git pull  there brings it up to date.")]
@@ -1085,7 +1086,7 @@ class App:
         console.print(Panel(Group(*lines), title=Text(" ⬆  update available ", style="bold reverse #fbbf24"),
                             title_align="center", border_style="bold #fbbf24", box=box.HEAVY,
                             padding=(1, 3), expand=True))
-        if kind == "exe" or kind == "source" or not cmd:
+        if kind == "source" or not cmd:
             return True
         label = f"✨ Update Forge to v{latest} now?  y = yes please · n = maybe later"
         if self.ui.docked:
@@ -1409,6 +1410,44 @@ class App:
         self.ui.verbose = not self.ui.verbose
         self.ui.ok(f"failover log {'ON' if self.ui.verbose else 'OFF'}")
 
+    remote = None
+
+    def cmd_remote(self, arg):
+        from . import remote as rm
+        word = arg.lower().split()[0] if arg.strip() else ""
+        if word in ("off", "stop"):
+            if self.remote:
+                self.remote.stop()
+                self.remote = None
+            self.ui.ok("remote off — your phone can't reach this Forge now")
+            return
+        if word not in ("", "on", "new", "qr"):
+            self.ui.error("usage: /remote · /remote off · /remote new (forget paired phones)")
+            return
+        if not self.ui.docked:
+            self.ui.error("remote needs the interactive chat (run forge without a prompt)")
+            return
+        try:
+            import cryptography, websockets  # noqa: F401
+        except ImportError:
+            self.ui.error("remote needs: pip install websockets cryptography qrcode")
+            return
+        if word == "new" and self.remote:
+            self.remote.stop()
+            self.remote = None
+        secret = rm.load_secret(new=word == "new")
+        link = rm.pair_link(secret)
+        try:
+            console.print(Text(rm.qr_text(link), style="#ffffff on #000000"))
+        except ImportError:
+            pass
+        self.ui.ok("📱 Scan this with your phone's camera (or the Forge app) to control this Forge from anywhere.")
+        self.ui.info(f"   or open on your phone: {link}")
+        self.ui.info("   end-to-end encrypted · keep this code private · /remote off stops it · /remote new forgets phones")
+        if not self.remote:
+            self.remote = rm.Remote(self, secret)
+            self.remote.start()
+
     voice = None
 
     def cmd_voice(self, arg):
@@ -1631,6 +1670,8 @@ class App:
             self.ui.docked = True
             if newest:
                 self.offer_update(newest)
+            if getattr(self, "start_remote", False) or os.environ.get("FORGE_REMOTE", "").lower() in ("1", "on"):
+                self.cmd_remote("")
             with patch_stdout(raw=True):   # output from the task thread prints above the box
                 return self._docked_loop(prompt)
         if newest and not self.offer_update(newest):
@@ -2305,6 +2346,9 @@ def setup_without_app(ui: UI) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
+    from . import winsetup
+    if winsetup.wanted(sys.argv[1:] if argv is None else argv):
+        return winsetup.run(sys.argv[1:] if argv is None else argv)
     ap = argparse.ArgumentParser(prog="forge", description="Terminal coding agent with key rotation and provider failover.")
     ap.add_argument("prompt", nargs="*", help="run one prompt and exit (otherwise starts the chat)")
     ap.add_argument("-y", "--yes", action="store_true", help="auto-approve file writes and shell commands")
@@ -2321,6 +2365,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--roster", action="store_true", help="show what each model is good at and exit")
     ap.add_argument("--json", action="store_true", help="emit one-shot prompt results as JSON on stdout")
     ap.add_argument("--update", action="store_true", help="install the newest Forge from PyPI and exit")
+    ap.add_argument("--remote", action="store_true", help="start the chat with phone control on (/remote)")
     ap.add_argument("--version", action="version", version=f"forge {__version__}")
     args = ap.parse_args(argv)
     if args.update:
@@ -2330,8 +2375,12 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Forge {__version__} is the newest version.")
             return 0
         kind, cmd = upd.how_installed()
+        if kind == "exe" and cmd:
+            if upd.run_after_exit(cmd):
+                print(f"Updating Forge {__version__} → {latest or 'newest'} in a new window.")
+            return 0
         if kind == "exe":
-            print(f"Download the new forge.exe zip from {RELEASES} and replace the old forge.exe.")
+            print(f"Download ForgeSetup.exe from {RELEASES} and open it: it installs Forge for you.")
             return 0
         if kind == "source" or not cmd:
             print("This Forge runs from a source folder: update it with  git pull  there.")
@@ -2435,6 +2484,7 @@ def main(argv: list[str] | None = None) -> int:
     if failing:
         # shown under the start screen (the page is cleared just before it)
         app.start_note = "keys failing: " + ", ".join(failing[:4]) + (" …" if len(failing) > 4 else "") + " · /keys test"
+    app.start_remote = args.remote
     return app.loop(replay=session, pick=pick)
 
 

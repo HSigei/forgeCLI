@@ -61,9 +61,11 @@ When a step is risky, Forge stops and asks:
 
 | Way | Command |
 |---|---|
-| pipx (recommended) | `pipx install forgecommandline` |
+| Windows, one click | download [`ForgeSetup.exe`](https://github.com/HSigei/forgeCLI/releases/latest/download/ForgeSetup.exe) and open it (no Python, no admin), or `irm https://forgecli.pages.dev/install.ps1 \| iex` |
+| macOS / Linux, one line | `curl -fsSL https://forgecli.pages.dev/install.sh \| sh` (uses uv, no sudo) |
+| pipx | `pipx install forgecommandline` |
 | pip | `python -m pip install forgecommandline` |
-| Windows exe, no Python | download `forge-vX.Y.Z-windows-x64.zip` from Releases, unzip, put `forge.exe` on your PATH |
+| Windows exe by hand | `forge-vX.Y.Z-windows-x64.zip` from Releases, unzip, put `forge.exe` on your PATH |
 | From source | `python -m pip install .` in this folder, or run `forge.cmd` directly |
 
 The command is `forge` whichever way you install it.
@@ -73,10 +75,10 @@ there's a newer release it installs it quietly right after you close Forge (so n
 while it's running). The next start greets you with "you're now on vX". Turn this off with
 `FORGE_AUTO_UPDATE=0`. Forge then shows an "update available" card instead, and you answer `y` or
 `n`. The card also appears if a quiet update fails twice. `/update` (or `forge --update`) updates
-straight away. It picks `pipx upgrade` or `pip install --upgrade` to match
-how you installed. On Windows Forge closes and the update finishes in a new window; your conversation
-is saved, so `forge -c` picks it up. `/update check` only checks. The `.exe` build points you to the
-new zip on Releases. Turn the daily check off with `FORGE_UPDATE_CHECK=0`.
+straight away. It picks `uv tool upgrade`, `pipx upgrade` or `pip install --upgrade` to match
+how you installed (the installed Windows build fetches the newest `ForgeSetup.exe` itself). On Windows Forge closes and the update finishes in a new window; your conversation
+is saved, so `forge -c` picks it up. `/update check` only checks. A loose `forge.exe` (not installed with
+ForgeSetup) points you to Releases. `forge --uninstall` removes the installed Windows build. Turn the daily check off with `FORGE_UPDATE_CHECK=0`.
 
 ## First run
 
@@ -169,6 +171,21 @@ quick background check and its track record. `/roster` shows each score and why.
 ---
 
 ## Features
+
+<details>
+<summary><b>Control Forge from your phone</b> (new in 0.9.4)</summary>
+
+Type `/remote` (or start with `forge --remote`) and scan the QR code with
+[Forge Remote](https://github.com/HSigei/forgeCLI/releases/latest/download/forge-remote.apk) (Android)
+or open [forgecli.pages.dev/app](https://forgecli.pages.dev/app/) on any phone (iPhone: Share → Add
+to Home Screen). From the phone you can send tasks, answer Forge's questions (Yes / Always / No),
+stop it, and take a screenshot of the laptop. It works over any network: both sides connect out to a
+small relay, and everything is end-to-end encrypted (AES-GCM) with a key that only exists in the QR
+code, your laptop (`~/.forge/remote.json`) and your phone. The relay only forwards scrambled bytes.
+`/remote off` stops it, `/remote new` makes a new key and unpairs every phone. Updates still have to
+be answered at the laptop.
+
+</details>
 
 <details>
 <summary><b>Desktop tools, code mode and voice</b> (new in 0.9.1)</summary>

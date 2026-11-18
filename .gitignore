@@ -21,3 +21,9 @@ server/
 docs/README.md
 .wrangler/
 evals/.runs/
+
+# never commit a remote pairing secret or the Android signing key
+remote.json
+*.jks
+*.keystore
+android/build/

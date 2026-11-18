@@ -1,0 +1,12 @@
+{
+  // Forge Remote relay: passes end-to-end encrypted messages between a laptop running
+  // `forge remote` and the phone app. It never sees the pairing secret, only room ids.
+  "name": "forge-relay",
+  "main": "src/index.js",
+  "compatibility_date": "2026-11-01",
+  "durable_objects": {
+    "bindings": [{ "name": "ROOMS", "class_name": "Room" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }],
+  "observability": { "enabled": true }
+}

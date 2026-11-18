@@ -183,6 +183,12 @@
 
   /* ── sections ── */
   section { padding: 110px 0; }
+  .phone-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 56px; align-items: center; }
+  .mb-note { flex: 1; color: var(--muted); font-size: 14px; }
+  .phone-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+  .phone-shot { margin: 0; justify-self: center; width: min(320px, 100%); padding: 10px; border-radius: 38px; background: #050409; border: 1px solid var(--line-2); box-shadow: 0 30px 80px -20px color-mix(in srgb, var(--accent) 35%, transparent); }
+  .phone-shot img { display: block; width: 100%; height: auto; border-radius: 28px; }
+  @media (max-width: 900px) { .phone-grid { grid-template-columns: 1fr; gap: 36px; } }
   .sec-head { max-width: 64ch; margin-bottom: 44px; }
   .sec-head h2 { margin: 12px 0 12px; font-size: clamp(32px, 4.6vw, 58px); line-height: 1.04; }
   [data-theme="studio"] .sec-head h2 { text-transform: uppercase; }
@@ -505,6 +511,7 @@
     <nav aria-label="Main" id="main-nav">
       <a class="hide-sm" href="#failover">Failover</a>
       <a class="hide-sm" href="#crew">Crew</a>
+      <a class="hide-sm" href="#phone">Phone</a>
       <a class="hide-sm" href="docs.html">Docs</a>
     </nav>
     <a class="btn btn-primary nav-cta" href="#install">Install</a>
@@ -517,15 +524,15 @@
     <div class="hero-gradient" id="hero-gradient" aria-hidden="true"></div>
     <div class="wrap hero-grid">
       <div class="hero-text">
-        <div class="eyebrow">terminal coding agent · v<span class="ver">0.9.0</span></div>
+        <div class="eyebrow">terminal coding agent · v<span class="ver">0.9.4</span></div>
         <h1 class="display"><span class="line"><span>The coding agent</span></span><span class="line"><span>that <em>never stops</em></span></span><span class="line"><span>at a rate limit.</span></span></h1>
         <p class="lede">Forge reads your project, edits files and runs commands. Bring your own API keys from as many providers as you like: when one says 429, the next one picks up mid-sentence.</p>
         <div class="hero-actions">
-          <a class="btn btn-primary rel" href="https://github.com/HSigei/forgeCLI/releases/latest">Download for Windows</a>
-          <a class="btn btn-ghost" href="#install">Install on Mac</a>
-          <a class="btn btn-ghost" href="#install">Other ways</a>
+          <a class="btn btn-primary dl-win" href="https://github.com/HSigei/forgeCLI/releases/latest/download/ForgeSetup.exe" data-os="win">Download for Windows</a>
+          <a class="btn btn-ghost dl-mac" href="dl/Install-Forge-mac.zip" download data-os="mac">Download for Mac</a>
+          <a class="btn btn-ghost" href="#phone" data-os="phone">Phone app</a>
         </div>
-        <div class="meta">Python 3.10+ · Windows, macOS, Linux · bring your own keys</div>
+        <div class="meta" id="dl-meta">Installs itself · Windows, macOS, Linux · bring your own keys</div>
       </div>
 
       <div class="scene" id="scene">
@@ -662,13 +669,29 @@
         <img class="pile" id="pile" src="media/pile.png" width="141" height="73" alt="">
       </div>
       <div class="tabs" role="tablist" aria-label="Install method">
-        <button class="tab" role="tab" id="t-uv" aria-controls="p-uv" aria-selected="true">uv</button>
+        <button class="tab" role="tab" id="t-win" aria-controls="p-win" aria-selected="true">Windows</button>
+        <button class="tab" role="tab" id="t-mac" aria-controls="p-mac" aria-selected="false" tabindex="-1">Mac &amp; Linux</button>
+        <button class="tab" role="tab" id="t-uv" aria-controls="p-uv" aria-selected="false" tabindex="-1">uv</button>
         <button class="tab" role="tab" id="t-pipx" aria-controls="p-pipx" aria-selected="false" tabindex="-1">pipx</button>
         <button class="tab" role="tab" id="t-pip" aria-controls="p-pip" aria-selected="false" tabindex="-1">pip</button>
-        <button class="tab" role="tab" id="t-exe" aria-controls="p-exe" aria-selected="false" tabindex="-1">Windows .exe</button>
         <button class="tab" role="tab" id="t-src" aria-controls="p-src" aria-selected="false" tabindex="-1">From source</button>
       </div>
-      <div class="panel" role="tabpanel" id="p-uv" aria-labelledby="t-uv" tabindex="0">
+      <div class="panel" role="tabpanel" id="p-win" aria-labelledby="t-win" tabindex="0">
+        <ol class="steps">
+          <li><div><p>Download and open <code>ForgeSetup.exe</code>. No Python, no admin rights: it installs Forge, adds it to your PATH and the Start menu, then opens it. It keeps itself up to date.</p><a class="btn btn-primary dl-win" href="https://github.com/HSigei/forgeCLI/releases/latest/download/ForgeSetup.exe">Download for Windows</a></div></li>
+          <li><div><p>Or paste this into PowerShell.</p><div class="cmd"><code id="win-ps">irm https://forgecli.pages.dev/install.ps1 | iex</code><button class="copy" type="button" data-copy="win-ps">copy</button></div></div></li>
+          <li><div><p>Then, in any new terminal:</p><div class="cmd"><code id="c7">forge</code><button class="copy" type="button" data-copy="c7">copy</button></div></div></li>
+        </ol>
+        <p class="note">Windows may say it protected your PC the first time: click <b>More info → Run anyway</b>. The download is the same <code>forge.exe</code> attached to every <a class="rel" href="https://github.com/HSigei/forgeCLI/releases/latest">GitHub release</a>, with its SHA-256.</p>
+      </div>
+      <div class="panel" role="tabpanel" id="p-mac" aria-labelledby="t-mac" tabindex="0" hidden>
+        <ol class="steps">
+          <li><div><p>Paste this into Terminal. It fetches its own Python (via uv), installs Forge and puts <code>forge</code> on your PATH. Nothing needs sudo.</p><div class="cmd"><code id="mac-sh">curl -fsSL https://forgecli.pages.dev/install.sh | sh</code><button class="copy" type="button" data-copy="mac-sh">copy</button></div></div></li>
+          <li><div><p>Rather click? Download, unzip and open <code>Install Forge.command</code> (the first time: right-click → Open).</p><a class="btn btn-ghost dl-mac" href="dl/Install-Forge-mac.zip" download>Download for Mac</a></div></li>
+          <li><div><p>Then, in a new terminal:</p><div class="cmd"><code id="mac-run">forge</code><button class="copy" type="button" data-copy="mac-run">copy</button></div></div></li>
+        </ol>
+      </div>
+      <div class="panel" role="tabpanel" id="p-uv" aria-labelledby="t-uv" tabindex="0" hidden>
         <ol class="steps">
           <li><div><p>Install uv first if you don't have it, then install Forge.</p><a href="https://docs.astral.sh/uv/getting-started/installation/">Install uv</a><div class="cmd"><code id="uv-install">uv tool install forgecommandline</code><button class="copy" type="button" data-copy="uv-install">copy</button></div></div></li>
           <li><div><p>Run it in a project folder.</p><div class="cmd"><code id="uv-run">forge</code><button class="copy" type="button" data-copy="uv-run">copy</button></div></div></li>
@@ -690,13 +713,6 @@
           <li><div><p>Updating later.</p><div class="cmd"><code id="c6">python -m pip install -U forgecommandline</code><button class="copy" type="button" data-copy="c6">copy</button></div></div></li>
         </ol>
       </div>
-      <div class="panel" role="tabpanel" id="p-exe" aria-labelledby="t-exe" tabindex="0" hidden>
-        <ol class="steps">
-          <li><div><p><code>forge-v<span class="ver">0.9.0</span>-windows-x64.zip</code>, no Python needed.</p><a class="btn btn-primary rel" href="https://github.com/HSigei/forgeCLI/releases/latest">Download for Windows</a></div></li>
-          <li><div><p>Unzip and put the folder holding <code>forge.exe</code> on your PATH.</p></div></li>
-          <li><div><p>New terminal.</p><div class="cmd"><code id="c7">forge</code><button class="copy" type="button" data-copy="c7">copy</button></div></div></li>
-        </ol>
-      </div>
       <div class="panel" role="tabpanel" id="p-src" aria-labelledby="t-src" tabindex="0" hidden>
         <ol class="steps">
           <li><div><p>Clone the repository.</p><div class="cmd"><code id="c8">git clone https://github.com/HSigei/forgeCLI.git</code><button class="copy" type="button" data-copy="c8">copy</button></div></div></li>
@@ -705,6 +721,30 @@
         </ol>
       </div>
       <p class="note"><b>First run</b> opens <code>/setup</code> to add your API keys. Add one or many: a key pasted into the chat later gets filed under the right provider and redacted. The more keys you add, the less you wait.</p>
+    </div>
+  </section>
+
+  <section id="phone" aria-labelledby="ph-h">
+    <div class="wrap phone-grid">
+      <div>
+        <div class="sec-head">
+          <div class="eyebrow">forge remote · new</div>
+          <h2 id="ph-h" class="display">Your laptop, <em>in your pocket.</em></h2>
+          <p>Step away from the desk and keep going: send Forge tasks, approve what it wants to run, watch it work and grab a look at your screen, from your phone.</p>
+        </div>
+        <ol class="steps">
+          <li><div><p>On the laptop, start Forge and type <code>/remote</code>. It shows a QR code.</p></div></li>
+          <li><div><p>Get the app and scan the code. That's the whole setup.</p>
+            <div class="phone-actions">
+              <a class="btn btn-primary" href="https://github.com/HSigei/forgeCLI/releases/latest/download/forge-remote.apk">Android app (APK)</a>
+              <a class="btn btn-ghost" href="app/">Open in the browser</a>
+            </div>
+          </div></li>
+          <li><div><p>Leave Forge open. Your phone reaches it from anywhere, over any network.</p></div></li>
+        </ol>
+        <p class="note"><b>End-to-end encrypted.</b> The key lives only in the QR code, on your laptop and your phone; the relay in between passes scrambled bytes it can't read. <code>/remote off</code> stops it, <code>/remote new</code> unpairs every phone. On iPhone, open the browser version and use Share → Add to Home Screen.</p>
+      </div>
+      <figure class="phone-shot"><img src="media/remote-phone.webp" width="780" height="1688" loading="lazy" alt="Forge Remote on a phone: Forge asks to run a command and the phone shows Yes, Always and No buttons"></figure>
     </div>
   </section>
 
@@ -734,7 +774,7 @@
 </footer>
 
 <div class="mbar" id="mbar" inert>
-  <code id="mb-cmd">uv tool install forgecommandline</code>
+  <code id="mb-cmd">curl -fsSL https://forgecli.pages.dev/install.sh | sh</code>
   <button class="copy" type="button" data-copy="mb-cmd">copy</button>
   <a class="btn btn-primary" href="#install">Install</a>
 </div>
@@ -791,6 +831,33 @@
   }
   $$("a.gh").forEach(function (a) { a.href = "https://github.com/" + repo; });
   $$("a.rel").forEach(function (a) { a.href = "https://github.com/" + repo + "/releases/latest"; });
+
+  /* ── newest version, straight from PyPI ── */
+  fetch("https://pypi.org/pypi/forgecommandline/json").then(function (r) { return r.json(); })
+    .then(function (j) { if (j && j.info && j.info.version) $$(".ver").forEach(function (v) { v.textContent = j.info.version; }); })
+    .catch(function () {});
+
+  /* ── downloads: the visitor's own system first ── */
+  (function () {
+    var ua = navigator.userAgent || "", plat = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || "";
+    var os = /android|iphone|ipad|ipod/i.test(ua) ? "phone" : /mac/i.test(plat) ? "mac" : /win/i.test(plat) ? "win" : /linux/i.test(plat) ? "linux" : "";
+    var acts = $(".hero-actions");
+    if (!acts) return;
+    var first = acts.querySelector('[data-os="' + (os === "linux" ? "mac" : os) + '"]');
+    if (first && first !== acts.firstElementChild) {
+      acts.querySelectorAll(".btn").forEach(function (b) { b.classList.remove("btn-primary"); b.classList.add("btn-ghost"); });
+      first.classList.remove("btn-ghost"); first.classList.add("btn-primary");
+      acts.insertBefore(first, acts.firstElementChild);
+    }
+    if (os === "linux") { first.textContent = "Install on Linux"; first.removeAttribute("download"); first.href = "#install"; }
+    var tab = os === "mac" || os === "linux" ? "t-mac" : null;
+    if (tab) document.addEventListener("DOMContentLoaded", function () { var t = document.getElementById(tab); if (t) t.click(); });
+    if (os === "phone") {
+      var m = document.getElementById("dl-meta"); if (m) m.textContent = "On your phone? Get Forge Remote to control your laptop from here.";
+      var bar = document.getElementById("mbar");
+      if (bar) bar.innerHTML = '<span class="mb-note">Control your laptop from here</span><a class="btn btn-primary" href="#phone">Phone app</a>';
+    }
+  })();
 
   /* ── night scene ── */
   var rnd = (function (seed) { return function () { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }; })(11);

@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="theme-color" content="#0a0912">
+<meta name="color-scheme" content="dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Forge Remote</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root {
+    --bg: #0a0912; --panel: #14111f; --panel-2: #1b1730; --line: #2a2540; --line-2: #3b3460;
+    --text: #ece9f7; --muted: #a19bbd; --dim: #6f6990;
+    --accent: #ff4fd8; --accent-ink: #14001a; --accent-2: #3ef0ff;
+    --ok: #4ade80; --warn: #fbbf24; --err: #f87171;
+    --mono: ui-monospace, "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --safe-t: env(safe-area-inset-top, 0px); --safe-b: env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 15px/1.5 var(--sans); }
+  body { display: flex; flex-direction: column; overflow: hidden;
+         background: radial-gradient(70% 40% at 80% 0%, #2a0f3a 0%, transparent 70%), var(--bg); }
+  button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; }
+  .hidden { display: none !important; }
+
+  /* top bar */
+  header { padding: calc(10px + var(--safe-t)) 16px 10px; display: flex; align-items: center; gap: 10px;
+           border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--bg) 85%, transparent);
+           backdrop-filter: blur(10px); }
+  .mark { font: 800 15px var(--mono); letter-spacing: .02em; color: var(--accent); }
+  .who { flex: 1; min-width: 0; }
+  .who b { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .who small { color: var(--muted); font: 12px var(--mono); display: flex; align-items: center; gap: 6px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dim); flex: none; }
+  .dot.on { background: var(--ok); box-shadow: 0 0 10px var(--ok); }
+  .dot.busy { background: var(--accent); box-shadow: 0 0 10px var(--accent); animation: pulse 1s infinite; }
+  @keyframes pulse { 50% { opacity: .35; } }
+  .icon-btn { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center;
+              border: 1px solid var(--line); background: var(--panel); }
+  .icon-btn:active { transform: scale(.96); }
+  .icon-btn svg { width: 20px; height: 20px; }
+
+  /* chat */
+  #feed { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px;
+          overscroll-behavior: contain; }
+  .ev { max-width: 100%; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: anywhere; }
+  .ev.user { align-self: flex-end; max-width: 85%; background: var(--accent); color: var(--accent-ink);
+             padding: 9px 13px; border-radius: 16px 16px 4px 16px; font-weight: 500; }
+  .ev.assistant { background: var(--panel); border: 1px solid var(--line); padding: 11px 13px;
+                  border-radius: 4px 16px 16px 16px; }
+  .ev.action, .ev.edited, .ev.wrote { font: 12.5px/1.45 var(--mono); color: var(--accent-2); padding-left: 4px; }
+  .ev.action::before { content: "● "; color: var(--accent); }
+  .ev.edited::before, .ev.wrote::before { content: "✎ "; }
+  .ev.result { font: 12px/1.45 var(--mono); color: var(--muted); background: #0e0c17; border: 1px solid var(--line);
+               border-radius: 10px; padding: 8px 10px; max-height: 180px; overflow: auto; }
+  .ev.info { color: var(--muted); font-size: 13px; }
+  .ev.ok { color: var(--ok); font-size: 13.5px; }
+  .ev.warn { color: var(--warn); font-size: 13.5px; }
+  .ev.error { color: var(--err); font-size: 13.5px; }
+  .ev.plan, .ev.todos { background: var(--panel-2); border: 1px solid var(--line-2); border-radius: 12px; padding: 10px 12px;
+                        font-size: 13.5px; }
+  .ev.shot img { width: 100%; border-radius: 12px; border: 1px solid var(--line-2); display: block; }
+  .ev.shot small { color: var(--dim); font-size: 12px; }
+  .ev code { font-family: var(--mono); font-size: 13px; background: #0e0c17; padding: 1px 5px; border-radius: 5px; }
+  .ev pre { font: 12.5px/1.45 var(--mono); background: #0e0c17; border: 1px solid var(--line); padding: 10px;
+            border-radius: 10px; overflow-x: auto; white-space: pre; margin: 6px 0; }
+  .typing { color: var(--muted); font-size: 13px; display: flex; gap: 8px; align-items: center; }
+  .typing i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: pulse 1s infinite; }
+  .empty { margin: auto; text-align: center; color: var(--muted); padding: 24px; max-width: 320px; }
+  .empty b { color: var(--text); display: block; font-size: 17px; margin-bottom: 6px; }
+
+  /* the question card */
+  #ask { margin: 0 12px 8px; border: 2px solid var(--warn); border-radius: 16px; padding: 12px; background: #1d1708;
+         box-shadow: 0 0 30px color-mix(in srgb, var(--warn) 25%, transparent); }
+  #ask p { margin: 0 0 10px; font-weight: 600; color: var(--warn); }
+  .choices { display: flex; gap: 8px; flex-wrap: wrap; }
+  .choice { flex: 1; min-width: 80px; padding: 11px 10px; border-radius: 12px; font-weight: 600;
+            background: var(--panel-2); border: 1px solid var(--line-2); }
+  .choice.yes { background: var(--ok); color: #04210f; border: 0; }
+  .choice.no { background: #3a1414; color: #fecaca; border-color: #5a1d1d; }
+
+  /* composer */
+  footer { padding: 8px 12px calc(10px + var(--safe-b)); border-top: 1px solid var(--line); background: var(--bg);
+           display: flex; gap: 8px; align-items: flex-end; }
+  textarea { flex: 1; resize: none; min-height: 44px; max-height: 140px; padding: 11px 14px; border-radius: 22px;
+             border: 1px solid var(--line-2); background: var(--panel); color: var(--text); font: 15px/1.4 var(--sans);
+             outline: none; }
+  textarea:focus { border-color: var(--accent); }
+  .send { width: 44px; height: 44px; border-radius: 50%; background: var(--accent); color: var(--accent-ink);
+          display: grid; place-items: center; flex: none; }
+  .send.stop { background: var(--err); color: #2a0606; }
+  .send svg { width: 20px; height: 20px; }
+  .send:disabled { opacity: .4; }
+
+  /* pairing */
+  #pair { flex: 1; overflow-y: auto; padding: 28px 20px calc(24px + var(--safe-b)); display: flex; flex-direction: column;
+          gap: 18px; max-width: 460px; margin: 0 auto; width: 100%; }
+  #pair h1 { font-size: 28px; line-height: 1.15; margin: 8px 0 0; letter-spacing: -.02em; }
+  #pair h1 em { color: var(--accent); font-style: normal; }
+  #pair p { color: var(--muted); margin: 0; }
+  .steps { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; counter-reset: s; }
+  .steps li { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px 12px 48px;
+              position: relative; counter-increment: s; }
+  .steps li::before { content: counter(s); position: absolute; left: 14px; top: 12px; width: 24px; height: 24px; border-radius: 50%;
+                      background: var(--accent); color: var(--accent-ink); font: 700 13px/24px var(--mono); text-align: center; }
+  .steps code { font-family: var(--mono); color: var(--accent-2); }
+  .big { padding: 15px; border-radius: 14px; background: var(--accent); color: var(--accent-ink); font-weight: 700; font-size: 16px; }
+  .ghost { padding: 13px; border-radius: 14px; border: 1px solid var(--line-2); background: var(--panel); font-weight: 600; }
+  #scanner { position: relative; border-radius: 18px; overflow: hidden; border: 2px solid var(--accent); aspect-ratio: 1; background: #000; }
+  #scanner video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  #scanner::after { content: ""; position: absolute; inset: 18%; border: 2px dashed color-mix(in srgb, #fff 70%, transparent); border-radius: 14px; }
+  .paste { display: flex; gap: 8px; }
+  .paste input { flex: 1; min-width: 0; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line-2); background: var(--panel);
+                 color: var(--text); font: 13px var(--mono); outline: none; }
+  .note { font-size: 12.5px; color: var(--dim); }
+  .toast { position: fixed; left: 50%; bottom: calc(90px + var(--safe-b)); transform: translateX(-50%); background: var(--panel-2);
+           border: 1px solid var(--line-2); padding: 9px 14px; border-radius: 12px; font-size: 13.5px; z-index: 9; max-width: 90vw; }
+
+  /* menu */
+  #menu { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 8; display: flex; align-items: flex-end; }
+  #menu .sheet { width: 100%; background: var(--panel); border-top: 1px solid var(--line-2); border-radius: 20px 20px 0 0;
+                 padding: 14px 14px calc(18px + var(--safe-b)); display: grid; gap: 8px; }
+  #menu .sheet button { text-align: left; padding: 14px; border-radius: 12px; background: var(--panel-2); }
+  #menu .sheet .danger { color: var(--err); }
+</style>
+</head>
+<body>
+
+<!-- pairing -->
+<section id="pair" class="hidden">
+  <div class="mark">◆ forge remote</div>
+  <h1>Your laptop, <em>in your pocket.</em></h1>
+  <p>Send Forge tasks, approve what it wants to do, and see your screen — from anywhere.</p>
+  <ol class="steps">
+    <li>On your laptop, open Forge and type <code>/remote</code></li>
+    <li>Scan the QR code it shows</li>
+  </ol>
+  <div id="scanner" class="hidden"><video id="video" playsinline muted></video></div>
+  <button class="big" id="scanBtn">Scan the QR code</button>
+  <div class="paste">
+    <input id="pasteIn" placeholder="…or paste the link Forge shows" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <button class="ghost" id="pasteBtn">Pair</button>
+  </div>
+  <p class="note">End-to-end encrypted: only your laptop and this phone hold the key. The relay in between only ever sees scrambled bytes.</p>
+</section>
+
+<!-- the chat -->
+<header id="top" class="hidden">
+  <div class="mark">◆</div>
+  <div class="who">
+    <b id="host">Your laptop</b>
+    <small><span class="dot" id="dot"></span><span id="state">connecting…</span></small>
+  </div>
+  <button class="icon-btn" id="shotBtn" aria-label="Screenshot of the laptop">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 21h8M12 18v3"/></svg>
+  </button>
+  <button class="icon-btn" id="menuBtn" aria-label="Menu">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+  </button>
+</header>
+<main id="feed" class="hidden"></main>
+<div id="ask" class="hidden">
+  <p id="askText"></p>
+  <div class="choices" id="choices"></div>
+</div>
+<footer id="composer" class="hidden">
+  <textarea id="msg" rows="1" placeholder="Ask Forge to do something…"></textarea>
+  <button class="send" id="sendBtn" aria-label="Send">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+  </button>
+</footer>
+
+<div id="menu" class="hidden">
+  <div class="sheet">
+    <button id="mSync">Refresh</button>
+    <button id="mClear">Clear this screen</button>
+    <button id="mUnpair" class="danger">Unpair this phone</button>
+    <button id="mClose">Close</button>
+  </div>
+</div>
+
+<script src="jsQR.js"></script>
+<script>
+"use strict";
+const RELAY = "wss://forge-relay.harrysigei.workers.dev";
+const $ = (id) => document.getElementById(id);
+const enc = new TextEncoder(), dec = new TextDecoder();
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+  del(k) { try { localStorage.removeItem(k); } catch {} },
+};
+let secret = null, key = null, ws = null, laptop = false, busy = false, asking = null, retry = 1000, pingT = null;
+let streamEl = null;
+
+// ---------- crypto (same scheme as forgecli/remote.py) ----------
+const b64u = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const unb64u = (s) => { s = s.replace(/-/g, "+").replace(/_/g, "/"); s += "=".repeat((4 - s.length % 4) % 4);
+  return Uint8Array.from(atob(s), (c) => c.charCodeAt(0)); };
+const sha256 = async (s) => new Uint8Array(await crypto.subtle.digest("SHA-256", enc.encode(s)));
+const hex = (u) => [...u].map((b) => b.toString(16).padStart(2, "0")).join("");
+
+async function seal(msg) {
+  const n = crypto.getRandomValues(new Uint8Array(12));
+  const body = enc.encode(JSON.stringify({ ...msg, ts: Date.now() / 1000 }));
+  const c = await crypto.subtle.encrypt({ name: "AES-GCM", iv: n, additionalData: enc.encode("forge") }, key, body);
+  return JSON.stringify({ n: b64u(n), c: b64u(c) });
+}
+async function unseal(frame) {
+  let f; try { f = JSON.parse(frame); } catch { return null; }
+  if (f.relay) return { t: "relay", ...f };
+  try {
+    const p = await crypto.subtle.decrypt({ name: "AES-GCM", iv: unb64u(f.n), additionalData: enc.encode("forge") }, key, unb64u(f.c));
+    const m = JSON.parse(dec.decode(p));
+    if (Math.abs(Date.now() / 1000 - (m.ts || 0)) > 300) return null;
+    return m;
+  } catch { return null; }
+}
+
+// ---------- pairing ----------
+function secretFrom(text) {
+  text = (text || "").trim();
+  const m = text.match(/pair=([A-Za-z0-9_-]{40,})/);
+  if (m) return m[1];
+  return /^[A-Za-z0-9_-]{40,}$/.test(text) ? text : null;
+}
+async function pairWith(s) {
+  stopScan();
+  store.set("forge.secret", s);
+  history.replaceState(null, "", location.pathname);
+  await begin(s);
+}
+let scanStream = null, scanning = false;
+async function scan() {
+  try {
+    scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+  } catch (e) { toast("Camera unavailable — paste the link instead"); return; }
+  $("scanner").classList.remove("hidden"); $("scanBtn").textContent = "Cancel";
+  const v = $("video"); v.srcObject = scanStream; await v.play();
+  scanning = true;
+  const det = ("BarcodeDetector" in window) ? new BarcodeDetector({ formats: ["qr_code"] }) : null;
+  const cv = document.createElement("canvas"), cx = cv.getContext("2d", { willReadFrequently: true });
+  const tick = async () => {
+    if (!scanning) return;
+    let found = null;
+    try {
+      if (det) { const r = await det.detect(v); if (r[0]) found = r[0].rawValue; }
+      else if (v.videoWidth) {
+        cv.width = v.videoWidth; cv.height = v.videoHeight; cx.drawImage(v, 0, 0);
+        const r = jsQR(cx.getImageData(0, 0, cv.width, cv.height).data, cv.width, cv.height);
+        if (r) found = r.data;
+      }
+    } catch {}
+    const s = found && secretFrom(found);
+    if (s) { if (navigator.vibrate) navigator.vibrate(40); pairWith(s); return; }
+    requestAnimationFrame(tick);
+  };
+  tick();
+}
+function stopScan() {
+  scanning = false;
+  if (scanStream) scanStream.getTracks().forEach((t) => t.stop());
+  scanStream = null; $("scanner").classList.add("hidden"); $("scanBtn").textContent = "Scan the QR code";
+}
+$("scanBtn").onclick = () => scanning ? stopScan() : scan();
+$("pasteBtn").onclick = () => { const s = secretFrom($("pasteIn").value); s ? pairWith(s) : toast("That doesn't look like a Forge link"); };
+
+// ---------- connection ----------
+async function begin(s) {
+  if (ws) { ws.onclose = null; try { ws.close(); } catch {} ws = null; $("feed").innerHTML = ""; }
+  secret = s;
+  key = await crypto.subtle.importKey("raw", await sha256("forge-key:" + s), "AES-GCM", false, ["encrypt", "decrypt"]);
+  show(true);
+  connect();
+}
+async function connect() {
+  const room = hex(await sha256("forge-room:" + secret)).slice(0, 48);
+  setState("connecting…");
+  try { ws = new WebSocket(`${RELAY}/room/${room}?role=phone`); } catch { return later(); }
+  ws.onopen = () => { retry = 1000; send({ t: "hello" });
+    clearInterval(pingT); pingT = setInterval(() => { try { ws.send("ping"); } catch {} }, 25000); };
+  ws.onmessage = async (e) => { if (e.data === "pong") return; const m = await unseal(e.data); if (m) handle(m); };
+  ws.onclose = () => { clearInterval(pingT); laptop = false; setState("offline — reconnecting…"); later(); };
+  ws.onerror = () => {};
+}
+function later() { setTimeout(() => { if (secret && (!ws || ws.readyState > 1)) connect(); }, retry); retry = Math.min(retry * 2, 20000); }
+async function send(m) { if (ws && ws.readyState === 1) { ws.send(await seal(m)); return true; } return false; }
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && secret) { if (!ws || ws.readyState > 1) connect(); else send({ t: "sync" }); }
+});
+
+function handle(m) {
+  switch (m.t) {
+    case "relay":
+      laptop = !!m.laptop;
+      if (laptop) send({ t: "hello" });
+      setState(); break;
+    case "hello":
+      laptop = true; $("feed").innerHTML = "";
+      (m.history || []).forEach(addEvent);
+      status(m);
+      if (!(m.history || []).length) emptyNote();
+      break;
+    case "status": laptop = true; status(m); break;
+    case "event": dropEmpty(); addEvent(m); break;
+    case "ask": showAsk(m); break;
+    case "asked": hideAsk(); break;
+    case "shot": dropEmpty(); addShot(m.jpeg); break;
+  }
+}
+function status(m) {
+  busy = !!m.busy;
+  if (m.name) $("host").textContent = m.name;
+  $("host").title = m.cwd || "";
+  setState();
+  typing(busy);
+}
+function setState(text) {
+  const dot = $("dot");
+  dot.className = "dot" + (laptop ? (busy ? " busy" : " on") : "");
+  $("state").textContent = text || (laptop ? (busy ? "working…" : "online · ready") : "laptop offline — open Forge and type /remote");
+  const b = $("sendBtn");
+  b.classList.toggle("stop", busy && !$("msg").value.trim() && !asking);
+  b.innerHTML = b.classList.contains("stop")
+    ? '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>'
+    : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
+}
+
+// ---------- the feed ----------
+function esc(s) { return s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+function md(s) {
+  // just enough markdown for chat: code blocks, inline code, bold
+  const parts = esc(s).split(/```[a-zA-Z0-9_-]*\n?/);
+  return parts.map((p, i) => i % 2 ? `<pre>${p.replace(/\n$/, "")}</pre>`
+    : p.replace(/`([^`\n]+)`/g, "<code>$1</code>").replace(/\*\*([^*\n]+)\*\*/g, "<b>$1</b>")).join("");
+}
+function addEvent(e) {
+  const feed = $("feed"), el = document.createElement("div");
+  el.className = "ev " + (e.kind || "info");
+  if (e.kind === "assistant") el.innerHTML = md(e.text); else el.textContent = e.text;
+  insert(el);
+}
+function addShot(b64) {
+  const el = document.createElement("div"); el.className = "ev shot";
+  el.innerHTML = `<img alt="Your laptop's screen" src="data:image/jpeg;base64,${b64}"><small>screen · ${new Date().toLocaleTimeString()}</small>`;
+  el.querySelector("img").onclick = () => window.open(el.querySelector("img").src);
+  insert(el);
+}
+function insert(el) {
+  const feed = $("feed"), stick = feed.scrollHeight - feed.scrollTop - feed.clientHeight < 120;
+  const t = feed.querySelector(".typing");
+  t ? feed.insertBefore(el, t) : feed.appendChild(el);
+  while (feed.children.length > 400) feed.removeChild(feed.firstChild);
+  if (stick) feed.scrollTop = feed.scrollHeight;
+}
+function typing(on) {
+  const feed = $("feed"); let t = feed.querySelector(".typing");
+  if (on && !t) { t = document.createElement("div"); t.className = "typing"; t.innerHTML = "<i></i> Forge is working"; feed.appendChild(t); feed.scrollTop = feed.scrollHeight; }
+  if (!on && t) t.remove();
+}
+function emptyNote() {
+  const d = document.createElement("div"); d.className = "empty";
+  d.innerHTML = "<b>Connected 🎉</b>Ask Forge to do anything on your laptop — fix a bug, run the tests, check on a download.";
+  $("feed").appendChild(d);
+}
+function dropEmpty() { const e = $("feed").querySelector(".empty"); if (e) e.remove(); }
+
+// ---------- questions and approvals ----------
+function showAsk(m) {
+  asking = m; $("askText").textContent = m.label || "Forge has a question";
+  const box = $("choices"); box.innerHTML = "";
+  let opts;
+  if (m.update) opts = [];
+  else if (/y = yes/i.test(m.label) && /a = always/i.test(m.label)) opts = [["Yes", "y", "yes"], ["Always", "a", ""], ["No", "n", "no"]];
+  else if (/enter to skip|optional/i.test(m.label)) opts = [["Skip", "", ""]];
+  else opts = [];
+  if (opts.length === 3) $("askText").textContent = "Allow this?";
+  else if (m.update) $("askText").textContent = "Forge is asking about an update — answer it at the laptop.";
+  opts.forEach(([label, val, cls]) => {
+    const b = document.createElement("button"); b.className = "choice " + cls; b.textContent = label;
+    b.onclick = () => { send({ t: "answer", text: val }); hideAsk(); };
+    box.appendChild(b);
+  });
+  $("ask").classList.remove("hidden");
+  $("msg").placeholder = opts.length ? "…or type a different answer" : "Type your answer…";
+  if (navigator.vibrate) navigator.vibrate([60, 60, 60]);
+  setState();
+}
+function hideAsk() { asking = null; $("ask").classList.add("hidden"); $("msg").placeholder = "Ask Forge to do something…"; setState(); }
+
+// ---------- composer ----------
+const msg = $("msg");
+msg.addEventListener("input", () => { msg.style.height = "auto"; msg.style.height = Math.min(msg.scrollHeight, 140) + "px"; setState(); });
+msg.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing && matchMedia("(pointer:fine)").matches) { e.preventDefault(); submit(); } });
+$("sendBtn").onclick = submit;
+async function submit() {
+  const text = msg.value.trim();
+  if (!text) { if (busy && !asking) { await send({ t: "stop" }); toast("Stopping…"); } return; }
+  if (!laptop) { toast("Your laptop is offline — open Forge and type /remote"); return; }
+  const ok = await send(asking ? { t: "answer", text } : { t: "say", text });
+  if (!ok) { toast("Not connected yet — try again in a moment"); return; }
+  if (asking) hideAsk();
+  msg.value = ""; msg.style.height = "auto"; setState();
+}
+$("shotBtn").onclick = async () => { if (!laptop) return toast("Your laptop is offline"); await send({ t: "shot" }); toast("Taking a screenshot…"); };
+$("menuBtn").onclick = () => $("menu").classList.remove("hidden");
+$("mClose").onclick = $("menu").onclick = (e) => { if (e.target === $("menu") || e.target === $("mClose")) $("menu").classList.add("hidden"); };
+$("mSync").onclick = () => { send({ t: "sync" }); $("menu").classList.add("hidden"); };
+$("mClear").onclick = () => { $("feed").innerHTML = ""; $("menu").classList.add("hidden"); };
+$("mUnpair").onclick = () => {
+  if (!confirm("Unpair this phone? You can pair again any time with /remote.")) return;
+  store.del("forge.secret"); secret = null; try { ws && ws.close(); } catch {} location.reload();
+};
+
+function toast(t) {
+  const d = document.createElement("div"); d.className = "toast"; d.textContent = t; document.body.appendChild(d);
+  setTimeout(() => d.remove(), 2600);
+}
+function show(paired) {
+  $("pair").classList.toggle("hidden", paired);
+  ["top", "feed", "composer"].forEach((id) => $(id).classList.toggle("hidden", !paired));
+}
+
+// ---------- start ----------
+if ("serviceWorker" in navigator && location.protocol === "https:" && !/androidplatform/.test(location.host)) {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
+window.forgePair = (link) => { const s = secretFrom(link); if (s && s !== secret) pairWith(s); };   // the Android app hands over pairing links here
+window.addEventListener("hashchange", () => window.forgePair(location.hash));   // a pairing link opened in this same tab
+(function () {
+  const fromLink = secretFrom(location.hash);
+  const saved = store.get("forge.secret");
+  if (fromLink) pairWith(fromLink);
+  else if (saved) begin(saved);
+  else show(false);
+})();
+</script>
+</body>
+</html>
