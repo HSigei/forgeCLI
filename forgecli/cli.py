@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib
 import json
 import os
 import pathlib
@@ -1412,6 +1413,41 @@ class App:
 
     remote = None
 
+    def _remote_deps(self) -> bool:
+        """/remote's packages, installed into the Python this Forge runs on (pipx/uv keep their own)."""
+        def have() -> bool:
+            importlib.invalidate_caches()
+            try:
+                import cryptography, websockets, qrcode  # noqa: F401
+                return True
+            except ImportError:
+                return False
+        if have():
+            return True
+        pkgs = ["websockets>=13", "cryptography>=42", "qrcode>=7.4"]
+        prefix = sys.prefix.lower().replace("\\", "/")
+        if "pipx" in prefix and shutil.which("pipx"):
+            name = pathlib.Path(sys.prefix).name
+            cmd = [shutil.which("pipx"), "inject", name, *pkgs]
+        elif "/uv/tools/" in prefix and shutil.which("uv"):
+            cmd = [shutil.which("uv"), "pip", "install", "--python", sys.executable, *pkgs]
+        else:
+            cmd = [sys.executable, "-m", "pip", "install", *pkgs]
+        self.ui.info("remote needs a few packages, installing them for this Forge…")
+        try:
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+        except Exception as e:
+            r = None
+            err = str(e)
+        else:
+            err = (r.stderr or r.stdout or "").strip().splitlines()[-1:] or [""]
+            err = err[0]
+        if r is not None and r.returncode == 0 and have():
+            return True
+        self.ui.error("couldn't install remote's packages" + (f" ({err})" if err else "")
+                      + "\n  run this, then try /remote again:  " + subprocess.list2cmdline(cmd))
+        return False
+
     def cmd_remote(self, arg):
         from . import remote as rm
         word = arg.lower().split()[0] if arg.strip() else ""
@@ -1427,10 +1463,7 @@ class App:
         if not self.ui.docked:
             self.ui.error("remote needs the interactive chat (run forge without a prompt)")
             return
-        try:
-            import cryptography, websockets  # noqa: F401
-        except ImportError:
-            self.ui.error("remote needs: pip install websockets cryptography qrcode")
+        if not self._remote_deps():
             return
         if word == "new" and self.remote:
             self.remote.stop()
